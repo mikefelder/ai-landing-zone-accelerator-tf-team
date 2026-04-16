@@ -16,4 +16,10 @@ access (e.g. Contributor) to the Azure resources within the deployed resource gr
 DESCRIPTION
 }
 
+variable "location" {
+  type        = string
+  default     = "eastus2"
+  description = "The Azure region to deploy resources into."
+}
+
 
