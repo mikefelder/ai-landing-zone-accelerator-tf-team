@@ -163,7 +163,7 @@ module "private_resolver" {
 # Create the Private DNS zones and link to the hub VNet
 module "private_dns_zones" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
-  version  = "0.4.2"
+  version  = "0.5.0"
   for_each = local.private_dns_zones
 
   domain_name      = each.value.name
@@ -171,10 +171,10 @@ module "private_dns_zones" {
   enable_telemetry = var.enable_telemetry
   virtual_network_links = {
     alz_vnet_link = {
-      vnetlinkname      = "${module.ai_lz_vnet.name}-link"
-      vnetid            = module.ai_lz_vnet.resource_id
-      autoregistration  = false
-      resolution_policy = "NxDomainRedirect" #doing this since the automation build systems aren't privately connected
+      name                 = "${module.ai_lz_vnet.name}-link"
+      virtual_network_id   = module.ai_lz_vnet.resource_id
+      registration_enabled = false
+      resolution_policy    = "NxDomainRedirect" #doing this since the automation build systems aren't privately connected
     }
   }
 }

@@ -34,10 +34,10 @@ locals {
   bastion_name = try(var.bastion_definition.name, null) != null ? var.bastion_definition.name : (var.name_prefix != null ? "${var.name_prefix}-bastion" : "ai-alz-bastion")
   default_virtual_network_link = {
     alz_vnet_link = {
-      vnetlinkname      = "${local.vnet_name}-link"
-      vnetid            = local.vnet_resource_id
-      autoregistration  = false
-      resolution_policy = var.private_dns_zones.allow_internet_resolution_fallback == false ? "Default" : "NxDomainRedirect"
+      name                 = "${local.vnet_name}-link"
+      virtual_network_id   = local.vnet_resource_id
+      registration_enabled = false
+      resolution_policy    = var.private_dns_zones.allow_internet_resolution_fallback == false ? "Default" : "NxDomainRedirect"
     }
   }
   deployed_subnets = { for subnet_name, subnet in local.subnets : subnet_name => subnet if subnet.enabled }
