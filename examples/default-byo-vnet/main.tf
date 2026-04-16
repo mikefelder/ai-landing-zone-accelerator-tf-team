@@ -125,8 +125,7 @@ module "test" {
   source = "../../"
 
   location            = local.location
-  resource_group_name = "ai-lz-rg-standalone-byo-vnet-${substr(module.naming.unique-seed, 0, 5)}"
-  #resource_group_name = "ai-lz-rg-default-ivrhi-2"
+  resource_group_name = "rg-foundry-poc"
   vnet_definition = {
     existing_byo_vnet = {
       this_vnet = {
