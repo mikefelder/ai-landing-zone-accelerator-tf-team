@@ -90,6 +90,12 @@ module "example_hub" {
   vnet_definition = {
     address_space = "10.10.0.0/24"
   }
+  bastion_definition = {
+    deploy = false
+  }
+  jump_vm_definition = {
+    deploy = false
+  }
   enable_telemetry = var.enable_telemetry
   name_prefix      = "${module.naming.resource_group.name_unique}-hub"
 }

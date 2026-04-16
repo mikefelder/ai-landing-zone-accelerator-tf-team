@@ -49,6 +49,7 @@ module "natgateway" {
 module "bastion_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"
+  count   = var.bastion_definition.deploy ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = "${local.bastion_name}-pip"
@@ -58,6 +59,7 @@ module "bastion_pip" {
 }
 
 resource "azurerm_bastion_host" "bastion" {
+  count               = var.bastion_definition.deploy ? 1 : 0
   location            = azurerm_resource_group.this.location
   name                = local.bastion_name
   resource_group_name = azurerm_resource_group.this.name
@@ -65,7 +67,7 @@ resource "azurerm_bastion_host" "bastion" {
 
   ip_configuration {
     name                 = "${local.bastion_name}-ipconf"
-    public_ip_address_id = module.bastion_pip.resource_id
+    public_ip_address_id = module.bastion_pip[0].resource_id
     subnet_id            = module.ai_lz_vnet.subnets["AzureBastionSubnet"].resource_id
   }
 }
@@ -185,6 +187,7 @@ resource "random_integer" "zone_index" {
 module "jumpvm" {
   source  = "Azure/avm-res-compute-virtualmachine/azurerm"
   version = "0.20.0"
+  count   = var.jump_vm_definition.deploy ? 1 : 0
 
   location = azurerm_resource_group.this.location
   name     = local.jump_vm_name
@@ -203,7 +206,7 @@ module "jumpvm" {
   zone                = length(local.region_zones) > 0 ? random_integer.zone_index.result : null
   account_credentials = {
     key_vault_configuration = {
-      resource_id = module.avm_res_keyvault_vault.resource_id
+      resource_id = module.avm_res_keyvault_vault[0].resource_id
     }
   }
   enable_telemetry = var.enable_telemetry
@@ -216,6 +219,7 @@ module "jumpvm" {
 module "avm_res_keyvault_vault" {
   source  = "Azure/avm-res-keyvault-vault/azurerm"
   version = "=0.10.2"
+  count   = var.jump_vm_definition.deploy ? 1 : 0
 
   location                    = azurerm_resource_group.this.location
   name                        = local.kv_name
@@ -245,9 +249,10 @@ module "avm_res_keyvault_vault" {
 }
 
 resource "time_sleep" "wait_for_kv_rbac" {
+  count           = var.jump_vm_definition.deploy ? 1 : 0
   create_duration = "60s"
   triggers = {
-    role_assignments = jsonencode(module.avm_res_keyvault_vault.resource_id)
+    role_assignments = jsonencode(module.avm_res_keyvault_vault[0].resource_id)
     principal_id     = data.azurerm_client_config.current.object_id
   }
 

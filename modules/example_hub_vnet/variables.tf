@@ -1,5 +1,18 @@
+variable "bastion_definition" {
+  type = object({
+    deploy = optional(bool, true)
+  })
+  default     = {}
+  description = <<DESCRIPTION
+Configuration object for the Bastion Host.
+
+- `deploy` - (Optional) Whether to deploy the Bastion Host. Default is true.
+DESCRIPTION
+}
+
 variable "deployer_ip_address" {
   type        = string
+  default     = null
   description = "The Ip address of the compute resource deploying the module. This is used to allow access Key vault for the jump box secrets."
 }
 
@@ -49,6 +62,7 @@ DESCRIPTION
 
 variable "jump_vm_definition" {
   type = object({
+    deploy           = optional(bool, true)
     name             = optional(string)
     sku              = optional(string, "Standard_B2s")
     tags             = optional(map(string), {})
@@ -58,6 +72,7 @@ variable "jump_vm_definition" {
   description = <<DESCRIPTION
 Configuration object for the Build VM to be created for managing the implementation services.
 
+- `deploy` - (Optional) Whether to deploy the Jump VM and its Key Vault. Default is true.
 - `name` - (Optional) The name of the Build VM. If not provided, a name will be generated.
 - `sku` - (Optional) The VM size/SKU for the Build VM. Default is "Standard_B2s".
 - `tags` - (Optional) Map of tags to assign to the Build VM.

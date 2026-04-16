@@ -94,36 +94,42 @@ locals {
   }
   region_zones        = local.region_zones_lookup != null ? local.region_zones_lookup : []
   region_zones_lookup = [for region in module.avm_utl_regions.regions : region if(lower(region.name) == lower(azurerm_resource_group.this.location) || (lower(region.display_name) == lower(azurerm_resource_group.this.location)))][0].zones
-  subnets = {
-    AzureBastionSubnet = {
-      enabled          = true
-      name             = "AzureBastionSubnet"
-      address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 0)]
-    }
-    JumpboxSubnet = {
-      enabled          = true
-      name             = "JumpboxSubnet"
-      address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 1)]
-      nat_gateway = {
-        id = module.natgateway.resource_id
+  subnets = merge(
+    var.bastion_definition.deploy ? {
+      AzureBastionSubnet = {
+        enabled          = true
+        name             = "AzureBastionSubnet"
+        address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 0)]
+      }
+    } : {},
+    var.jump_vm_definition.deploy ? {
+      JumpboxSubnet = {
+        enabled          = true
+        name             = "JumpboxSubnet"
+        address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 1)]
+        nat_gateway = {
+          id = module.natgateway.resource_id
+        }
+      }
+    } : {},
+    {
+      AzureFirewallSubnet = {
+        enabled          = true
+        name             = "AzureFirewallSubnet"
+        address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 2)]
+      }
+      DNSResolverInbound = {
+        enabled          = true
+        name             = "DNSResolverInbound"
+        address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 3)]
+        delegations = [{
+          name = "DNSResolverInboundDelegation"
+          service_delegation = {
+            name = "Microsoft.Network/dnsResolvers"
+          }
+        }]
       }
     }
-    AzureFirewallSubnet = {
-      enabled          = true
-      name             = "AzureFirewallSubnet"
-      address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 2)]
-    }
-    DNSResolverInbound = {
-      enabled          = true
-      name             = "DNSResolverInbound"
-      address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 3)]
-      delegations = [{
-        name = "DNSResolverInboundDelegation"
-        service_delegation = {
-          name = "Microsoft.Network/dnsResolvers"
-        }
-      }]
-    }
-  }
+  )
   vnet_name = var.name_prefix != null ? "${var.name_prefix}-example-vnet" : "ai-alz-example-vnet"
 }
