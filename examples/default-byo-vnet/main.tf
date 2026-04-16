@@ -139,6 +139,14 @@ module "test" {
     ai_foundry = {
       create_ai_agent_service    = true
       enable_diagnostic_settings = false
+      role_assignments = {
+        azure_resource_developers_foundry = {
+          role_definition_id_or_name = "Azure AI Developer"
+          principal_id               = var.azure_resource_developers_group_object_id
+          principal_type             = "Group"
+          description                = "Grants Foundry data-plane access to the Azure Resource Developers group (also has ARM access)"
+        }
+      }
     }
     ai_model_deployments = {
       "gpt-4.1" = {
@@ -156,7 +164,7 @@ module "test" {
     }
     ai_projects = {
       project_1 = {
-        name                       = "project-1"
+        name                       = "default-project-1"
         description                = "Project 1 description"
         display_name               = "Project 1 Display Name"
         create_project_connections = true
@@ -241,6 +249,10 @@ module "test" {
     }
   }
   bastion_definition = {
+    deploy = false
+  }
+  jumpvm_definition = {
+    deploy = false
   }
   container_app_environment_definition = {
     enable_diagnostic_settings = false
@@ -249,9 +261,25 @@ module "test" {
   flag_platform_landing_zone = true
   genai_app_configuration_definition = {
     enable_diagnostic_settings = false
+    role_assignments = {
+      azure_resource_developers = {
+        role_definition_id_or_name = "App Configuration Data Reader"
+        principal_id               = var.azure_resource_developers_group_object_id
+        principal_type             = "Group"
+        description                = "Grants App Configuration read access to the Azure Resource Developers group"
+      }
+    }
   }
   genai_container_registry_definition = {
     enable_diagnostic_settings = false
+    role_assignments = {
+      azure_resource_developers = {
+        role_definition_id_or_name = "AcrPush"
+        principal_id               = var.azure_resource_developers_group_object_id
+        principal_type             = "Group"
+        description                = "Grants container registry push/pull access to the Azure Resource Developers group"
+      }
+    }
   }
   genai_cosmosdb_definition = {
     consistency_level = "Session"
@@ -263,11 +291,35 @@ module "test" {
       bypass   = "AzureServices"
       ip_rules = ["${data.http.ip.response_body}/32"]
     }
+    role_assignments = {
+      azure_resource_developers = {
+        role_definition_id_or_name = "Key Vault Secrets User"
+        principal_id               = var.azure_resource_developers_group_object_id
+        principal_type             = "Group"
+        description                = "Grants Key Vault secrets read access to the Azure Resource Developers group"
+      }
+    }
   }
   genai_storage_account_definition = {
+    role_assignments = {
+      azure_resource_developers = {
+        role_definition_id_or_name = "Storage Blob Data Contributor"
+        principal_id               = var.azure_resource_developers_group_object_id
+        principal_type             = "Group"
+        description                = "Grants blob storage data access to the Azure Resource Developers group"
+      }
+    }
   }
   ks_ai_search_definition = {
     enable_diagnostic_settings = false
+    role_assignments = {
+      azure_resource_developers = {
+        role_definition_id_or_name = "Search Index Data Contributor"
+        principal_id               = var.azure_resource_developers_group_object_id
+        principal_type             = "Group"
+        description                = "Grants AI Search index data access to the Azure Resource Developers group"
+      }
+    }
   }
   private_dns_zones = {
     existing_zones_resource_group_resource_id = module.example_hub.resource_group_resource_id
