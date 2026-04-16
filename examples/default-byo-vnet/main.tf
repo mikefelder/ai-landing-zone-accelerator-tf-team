@@ -210,6 +210,21 @@ module "test" {
   }
   app_gateway_definition = {
     deploy = false
+    backend_address_pools = {
+      placeholder = { name = "placeholder" }
+    }
+    backend_http_settings = {
+      placeholder = { name = "placeholder", port = 80, protocol = "Http" }
+    }
+    frontend_ports = {
+      placeholder = { name = "placeholder", port = 80 }
+    }
+    http_listeners = {
+      placeholder = { name = "placeholder", frontend_port_name = "placeholder" }
+    }
+    request_routing_rules = {
+      placeholder = { name = "placeholder", rule_type = "Basic", http_listener_name = "placeholder", backend_address_pool_name = "placeholder", backend_http_settings_name = "placeholder", priority = 100 }
+    }
   }
   bastion_definition = {
     deploy = false
