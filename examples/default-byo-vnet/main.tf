@@ -204,6 +204,7 @@ module "test" {
     }
   }
   apim_definition = {
+    deploy          = false
     publisher_email = "DoNotReply@exampleEmail.com"
     publisher_name  = "Azure API Management"
   }
