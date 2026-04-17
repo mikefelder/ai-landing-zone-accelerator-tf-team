@@ -60,15 +60,6 @@ DESCRIPTION
   nullable    = false
 }
 
-variable "existing_resource_group_id" {
-  type        = string
-  default     = null
-  description = <<DESCRIPTION
-(Optional) The resource ID of an existing resource group to deploy into.
-If provided, the module will not create a new resource group.
-DESCRIPTION
-}
-
 variable "jump_vm_definition" {
   type = object({
     deploy           = optional(bool, true)

@@ -93,7 +93,7 @@ locals {
     }
   }
   region_zones        = local.region_zones_lookup != null ? local.region_zones_lookup : []
-  region_zones_lookup = [for region in module.avm_utl_regions.regions : region if(lower(region.name) == lower(local.resource_group_location) || (lower(region.display_name) == lower(local.resource_group_location)))][0].zones
+  region_zones_lookup = [for region in module.avm_utl_regions.regions : region if(lower(region.name) == lower(azurerm_resource_group.this.location) || (lower(region.display_name) == lower(azurerm_resource_group.this.location)))][0].zones
   subnets = merge(
     var.bastion_definition.deploy ? {
       AzureBastionSubnet = {

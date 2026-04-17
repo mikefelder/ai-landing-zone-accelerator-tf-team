@@ -10,7 +10,7 @@ output "firewall_ip_address" {
 
 output "resource_group_resource_id" {
   description = "The resource ID of the resource group where the hub virtual network is deployed"
-  value       = local.resource_group_id
+  value       = azurerm_resource_group.this.id
 }
 
 output "resource_id" {

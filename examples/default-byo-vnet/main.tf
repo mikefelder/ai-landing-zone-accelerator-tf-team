@@ -73,27 +73,26 @@ data "http" "ip" {
   }
 }
 
-# Single resource group for all resources
-resource "azurerm_resource_group" "this" {
+# BYO VNet resource group
+resource "azurerm_resource_group" "vnet_rg" {
   location = local.location
-  name     = "rg-foundry-poc"
+  name     = "rg-foundry-poc-vnet"
 }
 
 #create a sample hub to mimic an existing network landing zone configuration
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
+  deployer_ip_address = "${data.http.ip.response_body}/32"
   location            = local.location
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = "rg-foundry-poc-hub"
   vnet_definition = {
     address_space = "10.10.0.0/24"
   }
   bastion_definition = {
     deploy = false
   }
-  deployer_ip_address        = "${data.http.ip.response_body}/32"
-  enable_telemetry           = var.enable_telemetry
-  existing_resource_group_id = azurerm_resource_group.this.id
+  enable_telemetry = var.enable_telemetry
   jump_vm_definition = {
     deploy = false
   }
@@ -105,8 +104,8 @@ module "vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "=0.16.0"
 
-  location      = azurerm_resource_group.this.location
-  parent_id     = azurerm_resource_group.this.id
+  location      = azurerm_resource_group.vnet_rg.location
+  parent_id     = azurerm_resource_group.vnet_rg.id
   address_space = ["192.168.0.0/20"] # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
   dns_servers = {
     dns_servers = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value]
@@ -127,16 +126,11 @@ module "vnet" {
   }
 }
 
-import {
-  to = module.test.azurerm_resource_group.this
-  id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/rg-foundry-poc"
-}
-
 module "test" {
   source = "../../"
 
   location            = local.location
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = "rg-foundry-poc"
   vnet_definition = {
     existing_byo_vnet = {
       this_vnet = {
