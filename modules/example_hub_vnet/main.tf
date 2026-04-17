@@ -144,6 +144,14 @@ module "log_analytics_workspace" {
   log_analytics_workspace_retention_in_days = 30
   log_analytics_workspace_sku               = "PerGB2018"
 }
+# Add NSG for the DNS resolver inbound subnet (required by policies that deny subnets without NSGs)
+resource "azurerm_network_security_group" "dns_resolver" {
+  location            = azurerm_resource_group.this.location
+  name                = var.name_prefix != null ? "${var.name_prefix}-dns-resolver-nsg" : "ai-alz-dns-resolver-nsg"
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = var.tags
+}
+
 # Add DNS resolver with inbound endpoint
 module "private_resolver" {
   source  = "Azure/avm-res-network-dnsresolver/azurerm"

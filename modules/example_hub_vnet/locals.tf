@@ -122,6 +122,9 @@ locals {
         enabled          = true
         name             = "DNSResolverInbound"
         address_prefixes = [cidrsubnet(var.vnet_definition.address_space, 2, 3)]
+        network_security_group = {
+          id = azurerm_network_security_group.dns_resolver.id
+        }
         delegations = [{
           name = "DNSResolverInboundDelegation"
           service_delegation = {
