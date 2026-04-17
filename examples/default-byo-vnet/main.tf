@@ -183,10 +183,7 @@ module "test" {
         }
       }
     }
-    ai_search_definition = {
-      this = {
-      }
-    }
+    ai_search_definition = {}
     cosmosdb_definition = {
       this = {
         consistency_level = "Session"
@@ -294,8 +291,7 @@ module "test" {
     deploy = false
   }
   ks_ai_search_definition = {
-    sku                        = "basic"
-    replica_count              = 1
+    location                   = "westeurope"
     enable_diagnostic_settings = false
     role_assignments = {
       azure_resource_developers = {

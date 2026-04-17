@@ -3,7 +3,7 @@ module "search_service" {
   version = "0.2.0"
   count   = var.ks_ai_search_definition.deploy ? 1 : 0
 
-  location                     = azurerm_resource_group.this.location
+  location                     = coalesce(var.ks_ai_search_definition.location, azurerm_resource_group.this.location)
   name                         = local.ks_ai_search_name
   resource_group_name          = azurerm_resource_group.this.name
   diagnostic_settings          = local.ks_ai_search_diagnostic_settings

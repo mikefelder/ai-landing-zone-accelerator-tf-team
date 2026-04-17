@@ -1,6 +1,7 @@
 variable "ks_ai_search_definition" {
   type = object({
     deploy                     = optional(bool, true)
+    location                   = optional(string, null)
     name                       = optional(string)
     enable_diagnostic_settings = optional(bool, true)
     diagnostic_settings = optional(map(object({

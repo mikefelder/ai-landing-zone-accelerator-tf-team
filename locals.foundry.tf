@@ -16,12 +16,22 @@ locals {
       private_endpoints_manage_dns_zone_group = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? false : var.ai_foundry_definition.ai_foundry.private_endpoints_manage_dns_zone_group
     }
   )
-  foundry_ai_search_definition = { for key, value in var.ai_foundry_definition.ai_search_definition : key => merge(
-    var.ai_foundry_definition.ai_search_definition[key], {
-      private_dns_zone_resource_id            = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? null : (!var.flag_platform_landing_zone ? module.private_dns_zones.ai_search_zone.resource_id : local.private_dns_zones_existing.ai_search_zone.resource_id)
-      private_endpoints_manage_dns_zone_group = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? false : var.ai_foundry_definition.ai_search_definition[key].private_endpoints_manage_dns_zone_group
+  # When the foundry has its own ai_search_definition entries, enrich them with DNS zone info.
+  # When ai_search_definition is empty but the standalone ks_ai_search is deployed,
+  # automatically wire it into the foundry as an existing resource so the foundry
+  # project can connect to it without deploying a duplicate search service.
+  foundry_ai_search_definition = length(var.ai_foundry_definition.ai_search_definition) > 0 ? {
+    for key, value in var.ai_foundry_definition.ai_search_definition : key => merge(
+      var.ai_foundry_definition.ai_search_definition[key], {
+        private_dns_zone_resource_id            = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? null : (!var.flag_platform_landing_zone ? module.private_dns_zones.ai_search_zone.resource_id : local.private_dns_zones_existing.ai_search_zone.resource_id)
+        private_endpoints_manage_dns_zone_group = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? false : var.ai_foundry_definition.ai_search_definition[key].private_endpoints_manage_dns_zone_group
+      }
+    )
+  } : (var.ks_ai_search_definition.deploy ? {
+    this = {
+      existing_resource_id = module.search_service[0].resource_id
     }
-  ) }
+  } : {})
   foundry_cosmosdb_definition = { for key, value in var.ai_foundry_definition.cosmosdb_definition : key => merge(
     var.ai_foundry_definition.cosmosdb_definition[key], {
       private_dns_zone_resource_id            = var.private_dns_zones.azure_policy_pe_zone_linking_enabled ? null : (!var.flag_platform_landing_zone ? module.private_dns_zones.cosmos_sql_zone.resource_id : local.private_dns_zones_existing.cosmos_sql_zone.resource_id)
