@@ -13,9 +13,21 @@ resource "random_string" "name_suffix" {
 }
 
 resource "azurerm_resource_group" "this" {
+  count    = var.existing_resource_group_id == null ? 1 : 0
   location = var.location
   name     = var.resource_group_name
   tags     = var.tags
+}
+
+data "azurerm_resource_group" "existing" {
+  count = var.existing_resource_group_id != null ? 1 : 0
+  name  = split("/", var.existing_resource_group_id)[4]
+}
+
+locals {
+  resource_group_id       = var.existing_resource_group_id != null ? data.azurerm_resource_group.existing[0].id : azurerm_resource_group.this[0].id
+  resource_group_location = var.existing_resource_group_id != null ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.this[0].location
+  resource_group_name     = var.existing_resource_group_id != null ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.this[0].name
 }
 
 #Create Hub Vnet (Subnets: AzureBastionSubnet, BuildVM subnet, Private Resolver Subnet?)
@@ -23,8 +35,8 @@ module "ai_lz_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "=0.16.0"
 
-  location         = azurerm_resource_group.this.location
-  parent_id        = azurerm_resource_group.this.id
+  location         = local.resource_group_location
+  parent_id        = local.resource_group_id
   address_space    = [var.vnet_definition.address_space]
   enable_telemetry = var.enable_telemetry
   name             = local.vnet_name
@@ -35,9 +47,9 @@ module "natgateway" {
   source  = "Azure/avm-res-network-natgateway/azurerm"
   version = "0.2.1"
 
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = local.nat_gateway_name
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   enable_telemetry    = true
   public_ips = {
     public_ip_1 = {
@@ -51,18 +63,18 @@ module "bastion_pip" {
   version = "0.2.0"
   count   = var.bastion_definition.deploy ? 1 : 0
 
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = "${local.bastion_name}-pip"
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   enable_telemetry    = var.enable_telemetry
   zones               = local.region_zones
 }
 
 resource "azurerm_bastion_host" "bastion" {
   count               = var.bastion_definition.deploy ? 1 : 0
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = local.bastion_name
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   tags                = var.tags
 
   ip_configuration {
@@ -77,9 +89,9 @@ module "fw_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"
 
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = "${local.firewall_name}-pip"
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   enable_telemetry    = var.enable_telemetry
   zones               = local.region_zones
 }
@@ -90,9 +102,9 @@ module "firewall" {
 
   firewall_sku_name   = "AZFW_VNet"
   firewall_sku_tier   = "Standard"
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = local.firewall_name
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   diagnostic_settings = {
     to_law = {
       name                  = "sendToLogAnalytics-fw-${random_string.name_suffix.result}"
@@ -116,9 +128,9 @@ module "firewall_policy" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm"
   version = "0.3.3"
 
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = "${local.firewall_name}-policy"
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   enable_telemetry    = var.enable_telemetry
 }
 
@@ -137,18 +149,18 @@ module "log_analytics_workspace" {
   source  = "Azure/avm-res-operationalinsights-workspace/azurerm"
   version = "0.4.2"
 
-  location                                  = azurerm_resource_group.this.location
+  location                                  = local.resource_group_location
   name                                      = local.log_analytics_workspace_name
-  resource_group_name                       = azurerm_resource_group.this.name
+  resource_group_name                       = local.resource_group_name
   enable_telemetry                          = var.enable_telemetry
   log_analytics_workspace_retention_in_days = 30
   log_analytics_workspace_sku               = "PerGB2018"
 }
 # Add NSG for the DNS resolver inbound subnet (required by policies that deny subnets without NSGs)
 resource "azurerm_network_security_group" "dns_resolver" {
-  location            = azurerm_resource_group.this.location
+  location            = local.resource_group_location
   name                = var.name_prefix != null ? "${var.name_prefix}-dns-resolver-nsg" : "ai-alz-dns-resolver-nsg"
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   tags                = var.tags
 }
 
@@ -157,9 +169,9 @@ module "private_resolver" {
   source  = "Azure/avm-res-network-dnsresolver/azurerm"
   version = "0.8.0"
 
-  location                    = azurerm_resource_group.this.location
+  location                    = local.resource_group_location
   name                        = "example-resolver"
-  resource_group_name         = azurerm_resource_group.this.name
+  resource_group_name         = local.resource_group_name
   virtual_network_resource_id = module.ai_lz_vnet.resource_id
   inbound_endpoints = {
     "inbound1" = {
@@ -175,7 +187,7 @@ module "private_dns_zones" {
   for_each = local.private_dns_zones
 
   domain_name      = each.value.name
-  parent_id        = azurerm_resource_group.this.id
+  parent_id        = local.resource_group_id
   enable_telemetry = var.enable_telemetry
   virtual_network_links = {
     alz_vnet_link = {
@@ -197,7 +209,7 @@ module "jumpvm" {
   version = "0.20.0"
   count   = var.jump_vm_definition.deploy ? 1 : 0
 
-  location = azurerm_resource_group.this.location
+  location = local.resource_group_location
   name     = local.jump_vm_name
   network_interfaces = {
     network_interface_1 = {
@@ -210,7 +222,7 @@ module "jumpvm" {
       }
     }
   }
-  resource_group_name = azurerm_resource_group.this.name
+  resource_group_name = local.resource_group_name
   zone                = length(local.region_zones) > 0 ? random_integer.zone_index.result : null
   account_credentials = {
     key_vault_configuration = {
@@ -229,9 +241,9 @@ module "avm_res_keyvault_vault" {
   version = "=0.10.2"
   count   = var.jump_vm_definition.deploy ? 1 : 0
 
-  location                    = azurerm_resource_group.this.location
+  location                    = local.resource_group_location
   name                        = local.kv_name
-  resource_group_name         = azurerm_resource_group.this.name
+  resource_group_name         = local.resource_group_name
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   enabled_for_disk_encryption = true
   network_acls = {

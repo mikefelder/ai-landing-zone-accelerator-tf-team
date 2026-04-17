@@ -73,20 +73,20 @@ data "http" "ip" {
   }
 }
 
-# Add a vnet in a separate resource group
-resource "azurerm_resource_group" "vnet_rg" {
+# Single resource group for all resources
+resource "azurerm_resource_group" "this" {
   location = local.location
-  name     = module.naming.resource_group.name_unique
+  name     = "rg-foundry-poc"
 }
 
 #create a sample hub to mimic an existing network landing zone configuration
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
-  deployer_ip_address = "${data.http.ip.response_body}/32"
-  location            = local.location
-  resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
-  #resource_group_name = "default-example-rg-ivrh-2"
+  deployer_ip_address        = "${data.http.ip.response_body}/32"
+  location                   = local.location
+  resource_group_name        = azurerm_resource_group.this.name
+  existing_resource_group_id = azurerm_resource_group.this.id
   vnet_definition = {
     address_space = "10.10.0.0/24"
   }
@@ -105,8 +105,8 @@ module "vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "=0.16.0"
 
-  location      = azurerm_resource_group.vnet_rg.location
-  parent_id     = azurerm_resource_group.vnet_rg.id
+  location      = azurerm_resource_group.this.location
+  parent_id     = azurerm_resource_group.this.id
   address_space = ["192.168.0.0/20"] # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
   dns_servers = {
     dns_servers = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value]
@@ -127,11 +127,16 @@ module "vnet" {
   }
 }
 
+import {
+  to = module.test.azurerm_resource_group.this
+  id = azurerm_resource_group.this.id
+}
+
 module "test" {
   source = "../../"
 
   location            = local.location
-  resource_group_name = "rg-foundry-poc"
+  resource_group_name = azurerm_resource_group.this.name
   vnet_definition = {
     existing_byo_vnet = {
       this_vnet = {
