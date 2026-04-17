@@ -322,6 +322,9 @@ locals {
         (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
         id = module.firewall_route_table[0].resource_id
       } : null
+      network_security_group = {
+        id = module.nsgs.resource_id
+      }
     }
     PrivateEndpointSubnet = {
       enabled = true
