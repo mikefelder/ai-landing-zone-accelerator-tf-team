@@ -1,21 +1,3 @@
-variable "bastion_definition" {
-  type = object({
-    deploy = optional(bool, true)
-  })
-  default     = {}
-  description = <<DESCRIPTION
-Configuration object for the Bastion Host.
-
-- `deploy` - (Optional) Whether to deploy the Bastion Host. Default is true.
-DESCRIPTION
-}
-
-variable "deployer_ip_address" {
-  type        = string
-  default     = null
-  description = "The Ip address of the compute resource deploying the module. This is used to allow access Key vault for the jump box secrets."
-}
-
 variable "location" {
   type        = string
   description = <<DESCRIPTION
@@ -47,6 +29,24 @@ Configuration object for the Virtual Network (VNet) to be deployed.
 - `name` - (Optional) The name of the Virtual Network. If not provided, a name will be generated.
 - `address_space` - (Required) The address space for the Virtual Network in CIDR notation.
 DESCRIPTION
+}
+
+variable "bastion_definition" {
+  type = object({
+    deploy = optional(bool, true)
+  })
+  default     = {}
+  description = <<DESCRIPTION
+Configuration object for the Bastion Host.
+
+- `deploy` - (Optional) Whether to deploy the Bastion Host. Default is true.
+DESCRIPTION
+}
+
+variable "deployer_ip_address" {
+  type        = string
+  default     = null
+  description = "The Ip address of the compute resource deploying the module. This is used to allow access Key vault for the jump box secrets."
 }
 
 variable "enable_telemetry" {

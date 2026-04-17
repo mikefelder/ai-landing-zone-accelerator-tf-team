@@ -11,6 +11,8 @@ The following requirements are needed by this module:
 
 - <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) (>= 1.9, < 2.0)
 
+- <a name="requirement_azapi"></a> [azapi](#requirement\_azapi) (~> 2.4)
+
 - <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) (>= 3.116, < 5.0)
 
 - <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.5)
@@ -22,22 +24,18 @@ The following requirements are needed by this module:
 The following resources are used by this module:
 
 - [azurerm_bastion_host.bastion](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/bastion_host) (resource)
+- [azurerm_network_security_group.dns_resolver](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
 - [azurerm_resource_group.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [random_integer.zone_index](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/integer) (resource)
 - [random_string.name_suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
 - [time_sleep.wait_for_kv_rbac](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) (resource)
 - [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
+- [azurerm_resource_group.existing](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/resource_group) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
 The following input variables are required:
-
-### <a name="input_deployer_ip_address"></a> [deployer\_ip\_address](#input\_deployer\_ip\_address)
-
-Description: The Ip address of the compute resource deploying the module. This is used to allow access Key vault for the jump box secrets.
-
-Type: `string`
 
 ### <a name="input_location"></a> [location](#input\_location)
 
@@ -75,6 +73,30 @@ object({
 
 The following input variables are optional (have default values):
 
+### <a name="input_bastion_definition"></a> [bastion\_definition](#input\_bastion\_definition)
+
+Description: Configuration object for the Bastion Host.
+
+- `deploy` - (Optional) Whether to deploy the Bastion Host. Default is true.
+
+Type:
+
+```hcl
+object({
+    deploy = optional(bool, true)
+  })
+```
+
+Default: `{}`
+
+### <a name="input_deployer_ip_address"></a> [deployer\_ip\_address](#input\_deployer\_ip\_address)
+
+Description: The Ip address of the compute resource deploying the module. This is used to allow access Key vault for the jump box secrets.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_enable_telemetry"></a> [enable\_telemetry](#input\_enable\_telemetry)
 
 Description: This variable controls whether or not telemetry is enabled for the module.  
@@ -85,10 +107,20 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_existing_resource_group_id"></a> [existing\_resource\_group\_id](#input\_existing\_resource\_group\_id)
+
+Description: (Optional) The resource ID of an existing resource group to deploy into.  
+If provided, the module will not create a new resource group.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_jump_vm_definition"></a> [jump\_vm\_definition](#input\_jump\_vm\_definition)
 
 Description: Configuration object for the Build VM to be created for managing the implementation services.
 
+- `deploy` - (Optional) Whether to deploy the Jump VM and its Key Vault. Default is true.
 - `name` - (Optional) The name of the Build VM. If not provided, a name will be generated.
 - `sku` - (Optional) The VM size/SKU for the Build VM. Default is "Standard\_B2s".
 - `tags` - (Optional) Map of tags to assign to the Build VM.
@@ -98,6 +130,7 @@ Type:
 
 ```hcl
 object({
+    deploy           = optional(bool, true)
     name             = optional(string)
     sku              = optional(string, "Standard_B2s")
     tags             = optional(map(string), {})
@@ -225,7 +258,7 @@ Version: 0.2.1
 
 Source: Azure/avm-res-network-privatednszone/azurerm
 
-Version: 0.4.2
+Version: 0.5.0
 
 ### <a name="module_private_resolver"></a> [private\_resolver](#module\_private\_resolver)
 

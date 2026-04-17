@@ -83,21 +83,21 @@ resource "azurerm_resource_group" "this" {
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
-  deployer_ip_address        = "${data.http.ip.response_body}/32"
-  location                   = local.location
-  resource_group_name        = azurerm_resource_group.this.name
-  existing_resource_group_id = azurerm_resource_group.this.id
+  location            = local.location
+  resource_group_name = azurerm_resource_group.this.name
   vnet_definition = {
     address_space = "10.10.0.0/24"
   }
   bastion_definition = {
     deploy = false
   }
+  deployer_ip_address        = "${data.http.ip.response_body}/32"
+  enable_telemetry           = var.enable_telemetry
+  existing_resource_group_id = azurerm_resource_group.this.id
   jump_vm_definition = {
     deploy = false
   }
-  enable_telemetry = var.enable_telemetry
-  name_prefix      = "${module.naming.resource_group.name_unique}-hub"
+  name_prefix = "${module.naming.resource_group.name_unique}-hub"
 }
 
 #create a BYO vnet and peer to the hub
@@ -129,7 +129,7 @@ module "vnet" {
 
 import {
   to = module.test.azurerm_resource_group.this
-  id = azurerm_resource_group.this.id
+  id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/rg-foundry-poc"
 }
 
 module "test" {
@@ -240,9 +240,6 @@ module "test" {
   bastion_definition = {
     deploy = false
   }
-  jumpvm_definition = {
-    deploy = false
-  }
   container_app_environment_definition = {
     enable_diagnostic_settings = false
   }
@@ -298,6 +295,9 @@ module "test" {
         description                = "Grants blob storage data access to the Azure Resource Developers group"
       }
     }
+  }
+  jumpvm_definition = {
+    deploy = false
   }
   ks_ai_search_definition = {
     enable_diagnostic_settings = false

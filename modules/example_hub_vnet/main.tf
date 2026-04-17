@@ -13,7 +13,8 @@ resource "random_string" "name_suffix" {
 }
 
 resource "azurerm_resource_group" "this" {
-  count    = var.existing_resource_group_id == null ? 1 : 0
+  count = var.existing_resource_group_id == null ? 1 : 0
+
   location = var.location
   name     = var.resource_group_name
   tags     = var.tags
@@ -21,7 +22,8 @@ resource "azurerm_resource_group" "this" {
 
 data "azurerm_resource_group" "existing" {
   count = var.existing_resource_group_id != null ? 1 : 0
-  name  = split("/", var.existing_resource_group_id)[4]
+
+  name = split("/", var.existing_resource_group_id)[4]
 }
 
 locals {
@@ -71,7 +73,8 @@ module "bastion_pip" {
 }
 
 resource "azurerm_bastion_host" "bastion" {
-  count               = var.bastion_definition.deploy ? 1 : 0
+  count = var.bastion_definition.deploy ? 1 : 0
+
   location            = local.resource_group_location
   name                = local.bastion_name
   resource_group_name = local.resource_group_name
@@ -269,7 +272,8 @@ module "avm_res_keyvault_vault" {
 }
 
 resource "time_sleep" "wait_for_kv_rbac" {
-  count           = var.jump_vm_definition.deploy ? 1 : 0
+  count = var.jump_vm_definition.deploy ? 1 : 0
+
   create_duration = "60s"
   triggers = {
     role_assignments = jsonencode(module.avm_res_keyvault_vault[0].resource_id)

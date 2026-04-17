@@ -71,15 +71,15 @@ data "http" "ip" {
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
-  deployer_ip_address = "${data.http.ip.response_body}/32"
   location            = "australiaeast"
   resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
   #resource_group_name = "default-example-rg-ivrh-1"
   vnet_definition = {
     address_space = "10.10.0.0/24"
   }
-  enable_telemetry = var.enable_telemetry
-  name_prefix      = "${module.naming.resource_group.name_unique}-hub"
+  deployer_ip_address = "${data.http.ip.response_body}/32"
+  enable_telemetry    = var.enable_telemetry
+  name_prefix         = "${module.naming.resource_group.name_unique}-hub"
 }
 
 module "test" {
