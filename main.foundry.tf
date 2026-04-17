@@ -9,7 +9,7 @@ module "foundry_ptn" {
   #pass through the resource definitions
   ai_foundry                          = local.foundry_ai_foundry
   ai_model_deployments                = var.ai_foundry_definition.ai_model_deployments
-  ai_projects                         = var.ai_foundry_definition.ai_projects
+  ai_projects                         = local.foundry_ai_projects
   ai_search_definition                = local.foundry_ai_search_definition
   cosmosdb_definition                 = local.foundry_cosmosdb_definition
   create_byor                         = var.ai_foundry_definition.create_byor
