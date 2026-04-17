@@ -153,6 +153,13 @@ resource "azurerm_network_security_group" "dns_resolver" {
   tags                = var.tags
 }
 
+# Wait for VNet to reach Succeeded state after subnet/NSG operations
+resource "time_sleep" "wait_for_vnet" {
+  create_duration = "30s"
+
+  depends_on = [module.ai_lz_vnet]
+}
+
 # Add DNS resolver with inbound endpoint
 module "private_resolver" {
   source  = "Azure/avm-res-network-dnsresolver/azurerm"
@@ -168,6 +175,8 @@ module "private_resolver" {
       subnet_name = module.ai_lz_vnet.subnets["DNSResolverInbound"].name
     }
   }
+
+  depends_on = [module.ai_lz_vnet, time_sleep.wait_for_vnet]
 }
 # Create the Private DNS zones and link to the hub VNet
 module "private_dns_zones" {
