@@ -1,10 +1,12 @@
-# Default BYO VNet example — TEAM Inc PoC
+# `alz-integrated-foundry-poc` — ALZ-integrated Foundry proof-of-concept (BYO VNet)
 
-This example deploys the AI/ML Landing Zone into a **single resource group** (`rg-foundry-poc`) within an Azure Landing Zone (ALZ) architecture. It is configured for TEAM Inc's PoC with the following design decisions:
+**Best for:** Organizations that have already adopted Azure Landing Zones (ALZ) and want to deploy a low-cost Azure AI Foundry **proof-of-concept** into an existing application landing zone subscription, reusing the platform team's spoke VNet.
+
+This blueprint deploys the AI/ML Landing Zone into a **single resource group** (`rg-foundry-poc`). It assumes the connectivity and platform subscriptions already provide hub networking, private DNS zones, firewall, and hybrid connectivity. The cost-heavy resources (APIM, App Gateway, Bastion, jump VM) are disabled to minimize spend and deployment time for POC use.
 
 ## Resource Group Strategy
 
-All resources are consolidated into one resource group (`rg-foundry-poc`). The example creates the RG first, then passes it to both the hub networking module (via `existing_resource_group_id`) and the main AI/ML landing zone module (via a Terraform `import` block so both share the same RG without conflict).
+All resources are consolidated into one resource group (`rg-foundry-poc`). The blueprint creates the RG first, then passes it to both the hub networking module (via `existing_resource_group_id`) and the main AI/ML landing zone module (via a Terraform `import` block so both share the same RG without conflict).
 
 ## What Gets Created
 

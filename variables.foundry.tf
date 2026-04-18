@@ -84,7 +84,7 @@ variable "ai_foundry_definition" {
     # One or more AI search installations.
     ai_search_definition = optional(map(object({
       existing_resource_id                    = optional(string, null)
-      location                               = optional(string, null)
+      location                                = optional(string, null)
       name                                    = optional(string)
       private_dns_zone_resource_id            = optional(string, null)
       private_endpoints_manage_dns_zone_group = optional(bool, true)

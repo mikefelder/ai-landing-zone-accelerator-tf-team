@@ -198,6 +198,10 @@ variable "genai_cosmosdb_definition" {
       exposed_headers    = set(string)
       max_age_in_seconds = optional(number, null)
     }), null)
+    ip_range_filter = optional(list(string), [
+      "0.0.0.0",                                                                       # Accept connections from within public Azure datacenters (https://learn.microsoft.com/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-within-public-azure-datacenters)
+      "104.42.195.92", "40.76.54.131", "52.176.6.30", "52.169.50.45", "52.187.184.26", # Azure portal IPs (https://learn.microsoft.com/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-global-azure-datacenters-or-other-sources-within-azure)
+    ])
   })
   default     = {}
   description = <<DESCRIPTION

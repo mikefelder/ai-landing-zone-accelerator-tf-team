@@ -1,6 +1,6 @@
 module "avm_res_keyvault_vault" {
   source  = "Azure/avm-res-keyvault-vault/azurerm"
-  version = "=0.10.2"
+  version = "0.10.2"
 
   location                        = azurerm_resource_group.this.location
   name                            = local.genai_key_vault_name
@@ -34,11 +34,11 @@ module "avm_res_keyvault_vault" {
 }
 
 #moving this outside of the KV AVM module so I can set an implicit dependency from the jump vm module to order deletion properly.
-#TODO: Review if this permission is too permissive.  Can this be Secrets User instead?
+# Scoped to Secrets Officer (sufficient for jump VM credential storage); upgrade to Administrator only when key/cert ops are required.
 resource "azurerm_role_assignment" "deployment_user_kv_admin" {
   principal_id         = data.azurerm_client_config.current.object_id
   scope                = module.avm_res_keyvault_vault.resource_id
-  role_definition_name = "Key Vault Administrator"
+  role_definition_name = "Key Vault Secrets Officer"
 }
 
 resource "time_sleep" "wait_for_kv_rbac" {
@@ -72,16 +72,11 @@ module "cosmosdb" {
     max_interval_in_seconds = var.genai_cosmosdb_definition.consistency_policy.max_interval_in_seconds
     max_staleness_prefix    = var.genai_cosmosdb_definition.consistency_policy.max_staleness_prefix
   }
-  cors_rule           = var.genai_cosmosdb_definition.cors_rule
-  diagnostic_settings = local.genai_cosmosdb_diagnostic_settings
-  enable_telemetry    = var.enable_telemetry
-  geo_locations       = local.genai_cosmosdb_secondary_regions
-  ip_range_filter = [
-    "168.125.123.255",
-    "170.0.0.0/24",                                                                 #TODO: check 0.0.0.0 for validity
-    "0.0.0.0",                                                                      #Accept connections from within public Azure datacenters. https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-the-azure-portal
-    "104.42.195.92", "40.76.54.131", "52.176.6.30", "52.169.50.45", "52.187.184.26" #Allow access from the Azure portal. https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-global-azure-datacenters-or-other-sources-within-azure
-  ]
+  cors_rule                             = var.genai_cosmosdb_definition.cors_rule
+  diagnostic_settings                   = local.genai_cosmosdb_diagnostic_settings
+  enable_telemetry                      = var.enable_telemetry
+  geo_locations                         = local.genai_cosmosdb_secondary_regions
+  ip_range_filter                       = var.genai_cosmosdb_definition.ip_range_filter
   local_authentication_disabled         = var.genai_cosmosdb_definition.local_authentication_disabled
   multiple_write_locations_enabled      = var.genai_cosmosdb_definition.multiple_write_locations_enabled
   network_acl_bypass_for_azure_services = true

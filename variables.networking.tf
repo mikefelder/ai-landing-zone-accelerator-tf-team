@@ -125,6 +125,11 @@ Configuration object for the Virtual Network (VNet) to be deployed.
   - `peer_vwan_hub_resource_id` - (Optional) Resource ID of the Virtual WAN hub to peer with.
 
 DESCRIPTION
+
+  validation {
+    condition     = length(var.vnet_definition.existing_byo_vnet) <= 1
+    error_message = "vnet_definition.existing_byo_vnet must contain at most one entry. Multiple BYO VNets are not supported."
+  }
 }
 
 variable "app_gateway_definition" {
@@ -147,13 +152,13 @@ variable "app_gateway_definition" {
       min_capacity = optional(number, 2)
     }), {})
 
-    backend_address_pools = map(object({
+    backend_address_pools = optional(map(object({
       name         = string
       fqdns        = optional(set(string))
       ip_addresses = optional(set(string))
-    }))
+    })), {})
 
-    backend_http_settings = map(object({
+    backend_http_settings = optional(map(object({
       cookie_based_affinity               = optional(string, "Disabled")
       name                                = string
       port                                = number
@@ -170,14 +175,14 @@ variable "app_gateway_definition" {
         drain_timeout_sec          = number
         enable_connection_draining = bool
       }))
-    }))
+    })), {})
 
-    frontend_ports = map(object({
+    frontend_ports = optional(map(object({
       name = string
       port = number
-    }))
+    })), {})
 
-    http_listeners = map(object({
+    http_listeners = optional(map(object({
       name                           = string
       frontend_port_name             = string
       frontend_ip_configuration_name = optional(string)
@@ -191,7 +196,7 @@ variable "app_gateway_definition" {
         status_code           = string
         custom_error_page_url = string
       })))
-    }))
+    })), {})
 
     probe_configurations = optional(map(object({
       name                                      = string
@@ -219,7 +224,7 @@ variable "app_gateway_definition" {
       target_url           = optional(string)
     })), null)
 
-    request_routing_rules = map(object({
+    request_routing_rules = optional(map(object({
       name                        = string
       rule_type                   = string
       http_listener_name          = string
@@ -229,7 +234,7 @@ variable "app_gateway_definition" {
       backend_http_settings_name  = string
       redirect_configuration_name = optional(string)
       rewrite_rule_set_name       = optional(string)
-    }))
+    })), {})
 
     rewrite_rule_set = optional(map(object({
       name = string

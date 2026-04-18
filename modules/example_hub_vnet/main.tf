@@ -21,7 +21,7 @@ resource "azurerm_resource_group" "this" {
 #Create Hub Vnet (Subnets: AzureBastionSubnet, BuildVM subnet, Private Resolver Subnet?)
 module "ai_lz_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
-  version = "=0.16.0"
+  version = "0.16.0"
 
   location         = azurerm_resource_group.this.location
   parent_id        = azurerm_resource_group.this.id
@@ -236,7 +236,7 @@ module "jumpvm" {
 
 module "avm_res_keyvault_vault" {
   source  = "Azure/avm-res-keyvault-vault/azurerm"
-  version = "=0.10.2"
+  version = "0.10.2"
   count   = var.jump_vm_definition.deploy ? 1 : 0
 
   location                    = azurerm_resource_group.this.location

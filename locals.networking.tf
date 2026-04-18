@@ -1,4 +1,14 @@
 locals {
+  # ----- BYO VNet helpers (single source of truth) -----
+  is_byo_vnet             = length(var.vnet_definition.existing_byo_vnet) > 0
+  byo_vnet_resource_id    = local.is_byo_vnet ? values(var.vnet_definition.existing_byo_vnet)[0].vnet_resource_id : null
+  byo_vnet_parsed         = local.is_byo_vnet ? provider::azurerm::parse_resource_id(local.byo_vnet_resource_id) : null
+  byo_firewall_ip_address = local.is_byo_vnet ? try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) : null
+
+  # ----- Firewall + route-table deployment decisions -----
+  deploy_firewall             = !var.flag_platform_landing_zone && var.firewall_definition.deploy && !local.is_byo_vnet
+  deploy_firewall_route_table = (!var.flag_platform_landing_zone && !local.is_byo_vnet) || (!var.flag_platform_landing_zone && local.is_byo_vnet && local.byo_firewall_ip_address != null)
+
   app_gw_diagnostic_settings = var.app_gateway_definition.enable_diagnostic_settings ? (length(var.app_gateway_definition.diagnostic_settings) > 0 ? var.app_gateway_definition.diagnostic_settings : local.app_gw_diagnostic_settings_inner) : {}
   app_gw_diagnostic_settings_inner = ((try(var.law_definition.deploy, false) == true) ? {
     sendToLogAnalytics = {
@@ -114,7 +124,7 @@ locals {
     }
   } : {}
   route_table_name = "${local.vnet_name}-firewall-route-table"
-  subnet_ids       = length(var.vnet_definition.existing_byo_vnet) > 0 ? { for key, m in module.byo_subnets : key => try(m.resource_id, m.id) } : { for key, s in module.ai_lz_vnet[0].subnets : key => s.resource_id }
+  subnet_ids       = local.is_byo_vnet ? { for key, m in module.byo_subnets : key => try(m.resource_id, m.id) } : { for key, s in module.ai_lz_vnet[0].subnets : key => s.resource_id }
   subnets = {
     AzureBastionSubnet = {
       enabled = var.flag_platform_landing_zone == false ? try(local.subnets_definition["AzureBastionSubnet"].enabled, true) : try(local.subnets_definition["AzureBastionSubnet"].enabled, false)
@@ -171,8 +181,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -195,8 +204,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -226,8 +234,7 @@ locals {
         }]
       : null)
       route_table = (var.apim_definition.virtual_network_type == "None" &&
-        ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null))) ? {
+        local.deploy_firewall_route_table) ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -257,8 +264,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -288,8 +294,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -318,8 +323,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -342,8 +346,7 @@ locals {
           prefix_length = var.vnet_definition.ipam_pools[0].prefix_length + 4
         }]
       : null)
-      route_table = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-        (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? {
+      route_table = local.deploy_firewall_route_table ? {
         id = module.firewall_route_table[0].resource_id
       } : null
       network_security_group = {
@@ -353,7 +356,7 @@ locals {
   }
   subnets_definition       = var.vnet_definition.subnets
   virtual_network_links    = merge(local.default_virtual_network_link, var.private_dns_zones.network_links)
-  vnet_address_space       = length(var.vnet_definition.existing_byo_vnet) > 0 ? data.azurerm_virtual_network.ai_lz_vnet[0].address_space[0] : var.vnet_definition.address_space[0]
+  vnet_address_space       = local.is_byo_vnet ? data.azurerm_virtual_network.ai_lz_vnet[0].address_space[0] : var.vnet_definition.address_space[0]
   vnet_diagnostic_settings = var.vnet_definition.enable_diagnostic_settings ? (length(var.vnet_definition.diagnostic_settings) > 0 ? var.vnet_definition.diagnostic_settings : local.vnet_diagnostic_settings_inner) : {}
   vnet_diagnostic_settings_inner = ((try(var.law_definition.deploy, false) == true) ? {
     sendToLogAnalytics = {
@@ -369,8 +372,8 @@ locals {
       marketplace_partner_resource_id          = null
     }
   } : {})
-  vnet_name        = length(var.vnet_definition.existing_byo_vnet) > 0 ? try(basename(values(var.vnet_definition.existing_byo_vnet)[0].vnet_resource_id), null) : (try(var.vnet_definition.name, null) != null ? var.vnet_definition.name : (var.name_prefix != null ? "${var.name_prefix}-vnet" : "ai-alz-vnet"))
-  vnet_resource_id = length(var.vnet_definition.existing_byo_vnet) > 0 ? data.azurerm_virtual_network.ai_lz_vnet[0].id : module.ai_lz_vnet[0].resource_id
+  vnet_name        = local.is_byo_vnet ? local.byo_vnet_parsed.resource_name : (try(var.vnet_definition.name, null) != null ? var.vnet_definition.name : (var.name_prefix != null ? "${var.name_prefix}-vnet" : "ai-alz-vnet"))
+  vnet_resource_id = local.is_byo_vnet ? data.azurerm_virtual_network.ai_lz_vnet[0].id : module.ai_lz_vnet[0].resource_id
   #web_application_firewall_managed_rules = var.waf_policy_definition.managed_rules == null ? {
   #  managed_rule_set = tomap({
   #    owasp = {

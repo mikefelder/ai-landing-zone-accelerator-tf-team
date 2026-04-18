@@ -3,7 +3,7 @@
 module "ai_lz_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "0.16.0"
-  count   = length(var.vnet_definition.existing_byo_vnet) > 0 ? 0 : 1
+  count   = local.is_byo_vnet ? 0 : 1
 
   location      = azurerm_resource_group.this.location
   parent_id     = azurerm_resource_group.this.id
@@ -27,17 +27,17 @@ module "ai_lz_vnet" {
 data "azurerm_virtual_network" "ai_lz_vnet" {
   count = length(var.vnet_definition.existing_byo_vnet) > 0 ? 1 : 0
 
-  name                = try(basename(values(var.vnet_definition.existing_byo_vnet)[0].vnet_resource_id), "")
-  resource_group_name = split("/", try(values(var.vnet_definition.existing_byo_vnet)[0].vnet_resource_id, "/n/o/t/u/s/e/d"))[4]
+  name                = local.byo_vnet_parsed.resource_name
+  resource_group_name = local.byo_vnet_parsed.resource_group_name
 }
 
 module "byo_subnets" {
   source   = "Azure/avm-res-network-virtualnetwork/azurerm//modules/subnet"
   version  = "0.16.0"
-  for_each = { for k, v in local.deployed_subnets : k => v if length(var.vnet_definition.existing_byo_vnet) > 0 }
+  for_each = local.is_byo_vnet ? local.deployed_subnets : {}
 
   # Direct VNet resource id (module not instantiated when BYO is null due to empty for_each)
-  parent_id              = values(var.vnet_definition.existing_byo_vnet)[0].vnet_resource_id
+  parent_id              = local.byo_vnet_resource_id
   address_prefixes       = each.value.ipam_pools == null ? each.value.address_prefixes : null
   delegations            = try(each.value.delegations, try(each.value.delegation, null), null)
   ipam_pools             = each.value.ipam_pools
@@ -95,7 +95,7 @@ resource "azurerm_network_security_rule" "this" {
 module "hub_vnet_peering" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm//modules/peering"
   version = "0.16.0"
-  count   = length(var.vnet_definition.existing_byo_vnet) == 0 && var.vnet_definition.vnet_peering_configuration != null ? 1 : 0
+  count   = !local.is_byo_vnet && var.vnet_definition.vnet_peering_configuration != null ? 1 : 0
 
   parent_id                            = local.vnet_resource_id
   allow_forwarded_traffic              = var.vnet_definition.vnet_peering_configuration.allow_forwarded_traffic
@@ -115,7 +115,7 @@ module "hub_vnet_peering" {
 #TODO: Add the platform landing zone flag as a secondary decision point for the vwan connection?
 #peer_vwan_hub_resource_id
 resource "azurerm_virtual_hub_connection" "this" {
-  count = length(var.vnet_definition.existing_byo_vnet) == 0 && try(var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id, null) != null ? 1 : 0
+  count = !local.is_byo_vnet && try(var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id, null) != null ? 1 : 0
 
   name                      = "${local.vnet_name}-to-${basename(var.vnet_definition.vwan_hub_peering_configuration.peer_vwan_hub_resource_id)}"
   remote_virtual_network_id = local.vnet_resource_id
@@ -125,8 +125,7 @@ resource "azurerm_virtual_hub_connection" "this" {
 module "firewall_route_table" {
   source  = "Azure/avm-res-network-routetable/azurerm"
   version = "0.4.1"
-  count = ((!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0) ||
-  (!var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) > 0 && try(values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address, null) != null)) ? 1 : 0
+  count   = local.deploy_firewall_route_table ? 1 : 0
 
   location                      = azurerm_resource_group.this.location
   name                          = local.route_table_name
@@ -143,7 +142,7 @@ module "firewall_route_table" {
       name                   = "default-to-firewall"
       address_prefix         = "0.0.0.0/0"
       next_hop_type          = "VirtualAppliance"
-      next_hop_in_ip_address = length(var.vnet_definition.existing_byo_vnet) == 0 ? module.firewall[0].resource.ip_configuration[0].private_ip_address : values(var.vnet_definition.existing_byo_vnet)[0].firewall_ip_address
+      next_hop_in_ip_address = local.is_byo_vnet ? local.byo_firewall_ip_address : module.firewall[0].resource.ip_configuration[0].private_ip_address
     }
   }
 }
@@ -151,7 +150,7 @@ module "firewall_route_table" {
 module "fw_pip" {
   source  = "Azure/avm-res-network-publicipaddress/azurerm"
   version = "0.2.0"
-  count   = !var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0 ? 1 : 0
+  count   = local.deploy_firewall ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = "${local.firewall_name}-pip"
@@ -163,7 +162,7 @@ module "fw_pip" {
 module "firewall" {
   source  = "Azure/avm-res-network-azurefirewall/azurerm"
   version = "0.4.0"
-  count   = !var.flag_platform_landing_zone && var.firewall_definition.deploy && length(var.vnet_definition.existing_byo_vnet) == 0 ? 1 : 0
+  count   = local.deploy_firewall ? 1 : 0
 
   firewall_sku_name   = var.firewall_definition.sku
   firewall_sku_tier   = var.firewall_definition.tier
@@ -179,7 +178,7 @@ module "firewall" {
       public_ip_address_id = module.fw_pip[0].resource_id
     }
   ]
-  firewall_policy_id = !var.flag_platform_landing_zone && length(var.vnet_definition.existing_byo_vnet) == 0 ? module.firewall_policy[0].resource_id : null
+  firewall_policy_id = local.deploy_firewall ? module.firewall_policy[0].resource_id : null
   firewall_zones     = var.firewall_definition.zones
   role_assignments   = var.firewall_definition.role_assignments
   tags               = var.firewall_definition.tags
@@ -188,7 +187,7 @@ module "firewall" {
 module "firewall_policy" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm"
   version = "0.3.3"
-  count   = !var.flag_platform_landing_zone && var.firewall_definition.deploy && length(var.vnet_definition.existing_byo_vnet) == 0 ? 1 : 0
+  count   = local.deploy_firewall ? 1 : 0
 
   location            = azurerm_resource_group.this.location
   name                = "${local.firewall_name}-policy"
@@ -200,7 +199,7 @@ module "firewall_policy" {
 module "firewall_network_rule_collection_group" {
   source  = "Azure/avm-res-network-firewallpolicy/azurerm//modules/rule_collection_groups"
   version = "0.3.3"
-  count   = !var.flag_platform_landing_zone && var.firewall_definition.deploy && length(var.vnet_definition.existing_byo_vnet) == 0 ? 1 : 0
+  count   = local.deploy_firewall ? 1 : 0
 
   firewall_policy_rule_collection_group_firewall_policy_id      = module.firewall_policy[0].resource_id
   firewall_policy_rule_collection_group_name                    = local.firewall_policy_rule_collection_group_name

@@ -1,3 +1,5 @@
-# Default example
+# `alz-integrated-foundry-prod` — ALZ-integrated production-grade Foundry
 
-This example deploys the version of the module with the platform landing zone flag set to true. In this configuration, the assumption is that a hub Vnet hosting DNS has been provided and that the landing zone will attach to a hub Vnet for all the standard network services. (DNS, Hybrid Connectivity, Firewalls, and etc.)
+**Best for:** Organizations that have already adopted Azure Landing Zones (ALZ) and want to deploy a **production-grade** Azure AI Foundry environment into an existing application landing zone subscription, leveraging the ALZ hub for DNS, firewall, and hybrid connectivity.
+
+This blueprint sets `flag_platform_landing_zone = true` and lets the module create the spoke VNet, then peers it back into the ALZ hub via `vnet_peering_configuration` and reuses the hub's private DNS zones. The full Foundry surface is enabled: APIM, App Gateway, Bastion, AI Agent Service, AI projects with connections to Cosmos DB, AI Search, and Storage.

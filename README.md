@@ -15,7 +15,18 @@ This pattern module creates the full AI landing zone for foundry. For more detai
 | Jumpbox / Bastion | Disabled — access is RBAC-only, no jump host required |
 | RBAC — Azure resources | Entra security group with granular data-plane roles on each resource |
 | RBAC — Foundry (ai.azure.com) | Same group gets `Azure AI Developer` on the AI Foundry Hub |
-| Recommended example | `examples/default-byo-vnet` |
+| Recommended blueprint | [`blueprints/alz-integrated-foundry-poc`](blueprints/alz-integrated-foundry-poc/) |
+
+## Blueprints
+
+Ready-to-deploy blueprints for the most common organizational scenarios live under [`blueprints/`](blueprints/):
+
+| Organization profile | Blueprint |
+|---|---|
+| ALZ adopted, existing subscription, **POC** | [`blueprints/alz-integrated-foundry-poc`](blueprints/alz-integrated-foundry-poc/) |
+| ALZ adopted, existing subscription, **production-grade Foundry** | [`blueprints/alz-integrated-foundry-prod`](blueprints/alz-integrated-foundry-prod/) |
+| No ALZ, existing subscription, **standalone POC** | [`blueprints/standalone-foundry-poc`](blueprints/standalone-foundry-poc/) |
+| No ALZ, existing subscription, **standalone production-grade Foundry** | [`blueprints/standalone-foundry-prod`](blueprints/standalone-foundry-prod/) |
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -452,8 +463,9 @@ Type:
 ```hcl
 object({
     # AI Foundry Hub Configuration
-    create_byor      = optional(bool, true)
-    purge_on_destroy = optional(bool, false)
+    create_byor              = optional(bool, true)
+    create_private_endpoints = optional(bool, true)
+    purge_on_destroy         = optional(bool, false)
     ai_foundry = optional(object({
       name                       = optional(string, null)
       disable_local_auth         = optional(bool, false)
@@ -532,6 +544,7 @@ object({
     # One or more AI search installations.
     ai_search_definition = optional(map(object({
       existing_resource_id                    = optional(string, null)
+      location                                = optional(string, null)
       name                                    = optional(string)
       private_dns_zone_resource_id            = optional(string, null)
       private_endpoints_manage_dns_zone_group = optional(bool, true)
@@ -1083,13 +1096,13 @@ object({
       min_capacity = optional(number, 2)
     }), {})
 
-    backend_address_pools = map(object({
+    backend_address_pools = optional(map(object({
       name         = string
       fqdns        = optional(set(string))
       ip_addresses = optional(set(string))
-    }))
+    })), {})
 
-    backend_http_settings = map(object({
+    backend_http_settings = optional(map(object({
       cookie_based_affinity               = optional(string, "Disabled")
       name                                = string
       port                                = number
@@ -1106,14 +1119,14 @@ object({
         drain_timeout_sec          = number
         enable_connection_draining = bool
       }))
-    }))
+    })), {})
 
-    frontend_ports = map(object({
+    frontend_ports = optional(map(object({
       name = string
       port = number
-    }))
+    })), {})
 
-    http_listeners = map(object({
+    http_listeners = optional(map(object({
       name                           = string
       frontend_port_name             = string
       frontend_ip_configuration_name = optional(string)
@@ -1127,7 +1140,7 @@ object({
         status_code           = string
         custom_error_page_url = string
       })))
-    }))
+    })), {})
 
     probe_configurations = optional(map(object({
       name                                      = string
@@ -1155,7 +1168,7 @@ object({
       target_url           = optional(string)
     })), null)
 
-    request_routing_rules = map(object({
+    request_routing_rules = optional(map(object({
       name                        = string
       rule_type                   = string
       http_listener_name          = string
@@ -1165,7 +1178,7 @@ object({
       backend_http_settings_name  = string
       redirect_configuration_name = optional(string)
       rewrite_rule_set_name       = optional(string)
-    }))
+    })), {})
 
     rewrite_rule_set = optional(map(object({
       name = string
@@ -1811,6 +1824,10 @@ object({
       exposed_headers    = set(string)
       max_age_in_seconds = optional(number, null)
     }), null)
+    ip_range_filter = optional(list(string), [
+      "0.0.0.0",                                                                       # Accept connections from within public Azure datacenters (https://learn.microsoft.com/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-within-public-azure-datacenters)
+      "104.42.195.92", "40.76.54.131", "52.176.6.30", "52.169.50.45", "52.187.184.26", # Azure portal IPs (https://learn.microsoft.com/azure/cosmos-db/how-to-configure-firewall#allow-requests-from-global-azure-datacenters-or-other-sources-within-azure)
+    ])
   })
 ```
 
@@ -2041,6 +2058,7 @@ Type:
 ```hcl
 object({
     deploy                     = optional(bool, true)
+    location                   = optional(string, null)
     name                       = optional(string)
     enable_diagnostic_settings = optional(bool, true)
     diagnostic_settings = optional(map(object({
@@ -2349,6 +2367,10 @@ Default: `{}`
 
 The following outputs are exported:
 
+### <a name="output_ks_ai_search_resource_id"></a> [ks\_ai\_search\_resource\_id](#output\_ks\_ai\_search\_resource\_id)
+
+Description: The resource ID of the standalone AI Search service.
+
 ### <a name="output_log_analytics_workspace_id"></a> [log\_analytics\_workspace\_id](#output\_log\_analytics\_workspace\_id)
 
 Description: The ID of the Log Analytics Workspace used for monitoring.
@@ -2403,7 +2425,7 @@ Version: 0.4.2
 
 Source: Azure/avm-res-keyvault-vault/azurerm
 
-Version: =0.10.2
+Version: 0.10.2
 
 ### <a name="module_avm_utl_regions"></a> [avm\_utl\_regions](#module\_avm\_utl\_regions)
 

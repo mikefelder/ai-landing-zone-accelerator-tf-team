@@ -204,4 +204,14 @@ DESCRIPTION
     condition     = contains(["None", "External", "Internal"], var.apim_definition.virtual_network_type)
     error_message = "The virtual_network_type must be one of 'None', 'External', or 'Internal'."
   }
+
+  validation {
+    condition     = contains(["Developer", "Basic", "Standard", "Premium", "Consumption", "BasicV2", "StandardV2", "PremiumV2"], var.apim_definition.sku_root)
+    error_message = "The apim_definition.sku_root must be one of: Developer, Basic, Standard, Premium, Consumption, BasicV2, StandardV2, PremiumV2."
+  }
+
+  validation {
+    condition     = var.apim_definition.sku_capacity >= 0 && var.apim_definition.sku_capacity <= 12
+    error_message = "The apim_definition.sku_capacity must be between 0 and 12."
+  }
 }

@@ -38,7 +38,7 @@ locals {
       (length(var.ai_foundry_definition.ai_search_definition) == 0 &&
         var.ks_ai_search_definition.deploy &&
         try(project.ai_search_connection.new_resource_map_key, null) != null
-      ) ? {
+        ) ? {
         ai_search_connection = {
           existing_resource_id = module.search_service[0].resource_id
           new_resource_map_key = null

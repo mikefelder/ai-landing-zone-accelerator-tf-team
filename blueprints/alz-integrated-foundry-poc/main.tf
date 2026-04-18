@@ -8,7 +8,7 @@ terraform {
     }
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.116, < 5.0"
+      version = "~> 4.21"
     }
     http = {
       source  = "hashicorp/http"
@@ -102,7 +102,7 @@ module "example_hub" {
 #create a BYO vnet and peer to the hub
 module "vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
-  version = "=0.16.0"
+  version = "0.16.0"
 
   location      = azurerm_resource_group.vnet_rg.location
   parent_id     = azurerm_resource_group.vnet_rg.id
@@ -212,21 +212,6 @@ module "test" {
   }
   app_gateway_definition = {
     deploy = false
-    backend_address_pools = {
-      placeholder = { name = "placeholder" }
-    }
-    backend_http_settings = {
-      placeholder = { name = "placeholder", port = 80, protocol = "Http" }
-    }
-    frontend_ports = {
-      placeholder = { name = "placeholder", port = 80 }
-    }
-    http_listeners = {
-      placeholder = { name = "placeholder", frontend_port_name = "placeholder" }
-    }
-    request_routing_rules = {
-      placeholder = { name = "placeholder", rule_type = "Basic", http_listener_name = "placeholder", backend_address_pool_name = "placeholder", backend_http_settings_name = "placeholder", priority = 100 }
-    }
   }
   bastion_definition = {
     deploy = false
