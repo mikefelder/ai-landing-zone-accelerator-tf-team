@@ -1,6 +1,6 @@
 author: AVM
 name: e2e - getexamples
-description: Gets example directories from `examples/` and outputs them to the next step
+description: Gets example directories from `blueprints/` and outputs them to the next step
 inputs:
   github-token:
     description: The GitHub token to use for the API calls
@@ -44,5 +44,5 @@ runs:
 
         Write-Output "examples=$e2eTestsJson" >> $env:GITHUB_OUTPUT
 
-      working-directory: examples
+      working-directory: blueprints
       shell: pwsh

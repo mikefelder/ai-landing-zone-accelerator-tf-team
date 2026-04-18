@@ -4,11 +4,11 @@ terraform {
   required_providers {
     azapi = {
       source  = "azure/azapi"
-      version = "~> 2.0"
+      version = "~> 2.4"
     }
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.21"
+      version = "~> 4.0"
     }
     http = {
       source  = "hashicorp/http"
@@ -36,6 +36,10 @@ provider "azurerm" {
   }
 }
 
+locals {
+  location = "australiaeast"
+}
+
 data "azurerm_client_config" "current" {}
 
 ## Section to provide a random Azure region for the resource group
@@ -58,6 +62,8 @@ module "naming" {
   version = "0.4.2"
 }
 
+# Get the deployer IP address to allow for public write to the key vault. This is to make sure the tests run.
+# In practice your deployer machine will be on a private network and this will not be required.
 data "http" "ip" {
   url = "https://api.ipify.org/"
   retry {
@@ -67,33 +73,35 @@ data "http" "ip" {
   }
 }
 
-#create a sample hub to mimic an existing network landing zone configuration
-module "example_hub" {
-  source = "../../modules/example_hub_vnet"
+# Add a vnet in a separate resource group
 
-  location            = "australiaeast"
-  resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
-  #resource_group_name = "default-example-rg-ivrh-1"
-  vnet_definition = {
-    address_space = "10.10.0.0/24"
-  }
-  deployer_ip_address = "${data.http.ip.response_body}/32"
-  enable_telemetry    = var.enable_telemetry
-  name_prefix         = "${module.naming.resource_group.name_unique}-hub"
+resource "azurerm_resource_group" "vnet_rg" {
+  location = local.location
+  name     = module.naming.resource_group.name_unique
 }
+
+module "vnet" {
+  source  = "Azure/avm-res-network-virtualnetwork/azurerm"
+  version = "=0.16.0"
+
+  location      = azurerm_resource_group.vnet_rg.location
+  parent_id     = azurerm_resource_group.vnet_rg.id
+  address_space = ["192.168.0.0/20"] # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
+  name          = module.naming.virtual_network.name_unique
+}
+
 
 module "test" {
   source = "../../"
 
-  location            = "australiaeast"
-  resource_group_name = "ai-lz-rg-default-${substr(module.naming.unique-seed, 0, 5)}"
-  #resource_group_name = "ai-lz-rg-default-ivrhi-1"
+  location            = local.location
+  resource_group_name = "ai-lz-rg-standalone-poc-${substr(module.naming.unique-seed, 0, 5)}"
+  #resource_group_name = "ai-lz-rg-standalone-poc-ivrhi-4"
   vnet_definition = {
-    name          = "ai-lz-vnet-default-1"
-    address_space = ["192.168.0.0/23"]                                                               # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
-    dns_servers   = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value] # Use the DNS resolver IPs from the example hub
-    vnet_peering_configuration = {
-      peer_vnet_resource_id = module.example_hub.virtual_network_resource_id
+    existing_byo_vnet = {
+      this_vnet = {
+        vnet_resource_id = module.vnet.resource_id
+      }
     }
   }
   ai_foundry_definition = {
@@ -159,9 +167,8 @@ module "test" {
     }
   }
   apim_definition = {
-    deploy_sample_apis = true
-    publisher_email    = "DoNotReply@exampleEmail.com"
-    publisher_name     = "Azure API Management"
+    publisher_email = "DoNotReply@exampleEmail.com"
+    publisher_name  = "Azure API Management"
   }
   app_gateway_definition = {
     backend_address_pools = {
@@ -204,13 +211,12 @@ module "test" {
     }
   }
   bastion_definition = {
-
   }
   container_app_environment_definition = {
     enable_diagnostic_settings = false
   }
   enable_telemetry           = var.enable_telemetry
-  flag_platform_landing_zone = true
+  flag_platform_landing_zone = false
   genai_app_configuration_definition = {
     enable_diagnostic_settings = false
   }
@@ -221,10 +227,11 @@ module "test" {
     consistency_level = "Session"
   }
   genai_key_vault_definition = {
-    public_network_access_enabled = true # configured for testing
+    #this is for AVM testing purposes only. Doing this as we don't have an easy for the test runner to be privately connected for testing.
+    public_network_access_enabled = true
     network_acls = {
       bypass   = "AzureServices"
-      ip_rules = ["${data.http.ip.response_body}/32"] # Allow access from the test runner's IP address
+      ip_rules = ["${data.http.ip.response_body}/32"]
     }
   }
   genai_storage_account_definition = {
@@ -232,8 +239,7 @@ module "test" {
   ks_ai_search_definition = {
     enable_diagnostic_settings = false
   }
-  private_dns_zones = {
-    azure_policy_pe_zone_linking_enabled      = true
-    existing_zones_resource_group_resource_id = module.example_hub.resource_group_resource_id
+  tags = {
+    SecurityControl = "Ignore"
   }
 }

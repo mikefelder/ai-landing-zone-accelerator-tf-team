@@ -1,6 +1,10 @@
-# Default BYO VNet example — TEAM Inc PoC
+# ALZ-Integrated PoC blueprint — TEAM Inc
 
-This example deploys the AI/ML Landing Zone into a **single resource group** (`rg-foundry-poc`) within an Azure Landing Zone (ALZ) architecture. It is configured for TEAM Inc's PoC with the following design decisions:
+This blueprint deploys the AI/ML Landing Zone into a **single resource group** (`rg-foundry-poc`) within an Azure Landing Zone (ALZ) architecture. It is configured for TEAM Inc's PoC with the following design decisions:
+
+## Use case
+
+> **Best fit for:** organizations that have already adopted Azure Landing Zone patterns and networking, and want to leverage this ALZ architecture to deploy resources to an existing Azure Subscription for an Azure AI Foundry **proof-of-concept**.
 
 ## Resource Group Strategy
 

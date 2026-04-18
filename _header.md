@@ -13,4 +13,4 @@ This pattern module creates the full AI landing zone for foundry. For more detai
 | Jumpbox / Bastion | Disabled — access is RBAC-only, no jump host required |
 | RBAC — Azure resources | Entra security group with granular data-plane roles on each resource |
 | RBAC — Foundry (ai.azure.com) | Same group gets `Azure AI Developer` on the AI Foundry Hub |
-| Recommended example | `examples/default-byo-vnet` |
+| Recommended example | `blueprints/alz-integrated-poc` |

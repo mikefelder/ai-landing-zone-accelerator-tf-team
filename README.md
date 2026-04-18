@@ -15,7 +15,7 @@ This pattern module creates the full AI landing zone for foundry. For more detai
 | Jumpbox / Bastion | Disabled — access is RBAC-only, no jump host required |
 | RBAC — Azure resources | Entra security group with granular data-plane roles on each resource |
 | RBAC — Foundry (ai.azure.com) | Same group gets `Azure AI Developer` on the AI Foundry Hub |
-| Recommended example | `examples/default-byo-vnet` |
+| Recommended example | `blueprints/alz-integrated-poc` |
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -452,8 +452,9 @@ Type:
 ```hcl
 object({
     # AI Foundry Hub Configuration
-    create_byor      = optional(bool, true)
-    purge_on_destroy = optional(bool, false)
+    create_byor              = optional(bool, true)
+    create_private_endpoints = optional(bool, true)
+    purge_on_destroy         = optional(bool, false)
     ai_foundry = optional(object({
       name                       = optional(string, null)
       disable_local_auth         = optional(bool, false)
@@ -532,6 +533,7 @@ object({
     # One or more AI search installations.
     ai_search_definition = optional(map(object({
       existing_resource_id                    = optional(string, null)
+      location                               = optional(string, null)
       name                                    = optional(string)
       private_dns_zone_resource_id            = optional(string, null)
       private_endpoints_manage_dns_zone_group = optional(bool, true)
@@ -2041,6 +2043,7 @@ Type:
 ```hcl
 object({
     deploy                     = optional(bool, true)
+    location                   = optional(string, null)
     name                       = optional(string)
     enable_diagnostic_settings = optional(bool, true)
     diagnostic_settings = optional(map(object({
@@ -2348,6 +2351,10 @@ Default: `{}`
 ## Outputs
 
 The following outputs are exported:
+
+### <a name="output_ks_ai_search_resource_id"></a> [ks\_ai\_search\_resource\_id](#output\_ks\_ai\_search\_resource\_id)
+
+Description: The resource ID of the standalone AI Search service.
 
 ### <a name="output_log_analytics_workspace_id"></a> [log\_analytics\_workspace\_id](#output\_log\_analytics\_workspace\_id)
 
