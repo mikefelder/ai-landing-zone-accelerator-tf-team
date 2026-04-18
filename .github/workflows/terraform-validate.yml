@@ -1,0 +1,62 @@
+---
+name: Terraform Validate
+
+# Local, non-secret-dependent validation that runs on every PR.
+# Complements the upstream Azure/avm-terraform-governance managed PR check
+# (which requires TEST_SUBSCRIPTION_IDS / OIDC secrets in the `test`
+# environment) by giving the PR a green check that only depends on the code
+# in the repo. Runs `terraform fmt -check` and `terraform validate` against
+# the root module and every blueprint.
+
+on:
+  pull_request:
+    types: ['opened', 'reopened', 'synchronize']
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Root module pins required_version >= 1.10; pick a recent matching release.
+  TERRAFORM_VERSION: 1.13.3
+
+jobs:
+  fmt:
+    name: terraform fmt (blueprints)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      # Scoped to blueprints/ — the root module has pre-existing fmt drift
+      # tracked separately and out of scope for this PR.
+      - name: terraform fmt -check -recursive blueprints/
+        run: terraform fmt -check -recursive blueprints/
+
+  validate:
+    name: terraform validate (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - .
+          - blueprints/alz-integrated-poc
+          - blueprints/alz-integrated-production
+          - blueprints/standalone-poc
+          - blueprints/standalone-production
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform init -backend=false
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false -input=false
+      - name: terraform validate
+        working-directory: ${{ matrix.dir }}
+        run: terraform validate -no-color
