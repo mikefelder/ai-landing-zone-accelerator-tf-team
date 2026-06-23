@@ -98,22 +98,22 @@ module "test" {
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
     name          = "ai-lz-vnet-default-1"
-    address_space = ["172.20.115.0/24"] # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
+    address_space = ["172.20.124.0/23"] # infra-allocated /23. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
     # TODO: set dns_servers to ALZ hub DNS resolver IPs or custom DNS; currently commented out.
     # dns_servers   = ["<hub-dns-resolver-ip-1>", "<hub-dns-resolver-ip-2>"]
-    # Explicit subnet prefixes for the /24. The module's default cidrsubnet math is calibrated for a /23
-    # and would size the Microsoft.App/environments-delegated subnets below Azure's required /27 on a /24.
-    # AIFoundrySubnet and ContainerAppEnvironmentSubnet are therefore pinned to /27 (delegation minimum).
-    # NOTE: Microsoft recommends /24 for the agent subnet alone; /27 meets the hard minimum but limits
-    # agent/Container Apps scaling headroom. Move to a /23 VNet if agent scaling is needed later.
-    # 172.20.115.144/28 - 172.20.115.255 left free for growth.
+    # Explicit subnet prefixes for the /23. The delegated Microsoft.App/environments subnets
+    # (AIFoundrySubnet agent injection + ContainerAppEnvironmentSubnet) and the PrivateEndpointSubnet
+    # are sized at /26 to give agent/Container Apps/private-endpoint scaling headroom well above
+    # Azure's /27 delegation minimum. The module's default cidrsubnet math would also yield valid
+    # /27s on a /23, but pinning keeps the layout explicit and predictable.
+    # 172.20.125.32 - 172.20.125.255 left free for growth.
     subnets = {
-      PrivateEndpointSubnet         = { address_prefix = "172.20.115.0/27" }
-      AIFoundrySubnet               = { address_prefix = "172.20.115.32/27" }
-      ContainerAppEnvironmentSubnet = { address_prefix = "172.20.115.64/27" }
-      DevOpsBuildSubnet             = { address_prefix = "172.20.115.96/28" }
-      AppGatewaySubnet              = { address_prefix = "172.20.115.112/28" }
-      APIMSubnet                    = { address_prefix = "172.20.115.128/28" }
+      PrivateEndpointSubnet         = { address_prefix = "172.20.124.0/26" }
+      AIFoundrySubnet               = { address_prefix = "172.20.124.64/26" }
+      ContainerAppEnvironmentSubnet = { address_prefix = "172.20.124.128/26" }
+      DevOpsBuildSubnet             = { address_prefix = "172.20.124.192/27" }
+      AppGatewaySubnet              = { address_prefix = "172.20.124.224/27" }
+      APIMSubnet                    = { address_prefix = "172.20.125.0/27" }
     }
     # TODO: vnet_peering_configuration — replace with real ALZ hub VNet resource ID
     # vnet_peering_configuration = {
@@ -154,6 +154,9 @@ module "test" {
         ai_search_connection = {
           new_resource_map_key = "this"
         }
+        cosmos_db_connection = {
+          new_resource_map_key = "this"
+        }
         storage_account_connection = {
           new_resource_map_key = "this"
         }
@@ -163,7 +166,10 @@ module "test" {
       this = {
       }
     }
-    cosmosdb_definition = {}
+    cosmosdb_definition = {
+      this = {
+      }
+    }
     key_vault_definition = {
       this = {
       }
