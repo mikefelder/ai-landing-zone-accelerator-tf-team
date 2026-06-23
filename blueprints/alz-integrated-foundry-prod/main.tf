@@ -22,6 +22,10 @@ terraform {
 }
 
 provider "azurerm" {
+  # Target the pre-vended landing zone subscription. Leave var.subscription_id
+  # null to fall back to ARM_SUBSCRIPTION_ID / the Azure CLI's active subscription.
+  subscription_id     = var.subscription_id
+  tenant_id           = var.tenant_id
   storage_use_azuread = true
   features {
     resource_group {
