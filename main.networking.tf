@@ -34,7 +34,7 @@ data "azurerm_virtual_network" "ai_lz_vnet" {
 module "byo_subnets" {
   source   = "Azure/avm-res-network-virtualnetwork/azurerm//modules/subnet"
   version  = "0.16.0"
-  for_each = local.is_byo_vnet ? local.deployed_subnets : try({ for k, v in local.deployed_subnets : k => v if false }, {})
+  for_each = { for k, v in local.deployed_subnets : k => v if local.is_byo_vnet }
 
   # Direct VNet resource id (module not instantiated when BYO is null due to empty for_each)
   parent_id              = local.byo_vnet_resource_id
