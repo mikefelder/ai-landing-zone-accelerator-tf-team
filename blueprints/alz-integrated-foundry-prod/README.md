@@ -17,7 +17,7 @@ Keeping subscription creation out of this configuration avoids the billing-scope
 
 ## Networking — /24 address space
 
-The spoke VNet defaults to a single `/24` (`192.168.0.0/24`) with explicit subnet prefixes. The two `Microsoft.App/environments`-delegated subnets (`AIFoundrySubnet`, `ContainerAppEnvironmentSubnet`) are pinned to `/27`, Azure's minimum for delegated subnets. Replace the prefixes (and `address_space`) with your infra-allocated `/24` before deploying.
+The spoke VNet uses the infra-allocated `/24` (`172.20.115.0/24`) with explicit subnet prefixes. The two `Microsoft.App/environments`-delegated subnets (`AIFoundrySubnet`, `ContainerAppEnvironmentSubnet`) are pinned to `/27`, Azure's minimum for delegated subnets. All three RFC1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) are supported for the Foundry agent capabilityHost subnet; `172.20.115.0/24` falls within `172.16.0.0/12`. Microsoft recommends a `/24` for the agent subnet alone, so move to a `/23` VNet if Agent Service / Container Apps scaling needs more headroom than the `/27` provides.
 
 ```hcl
 terraform {
@@ -116,19 +116,21 @@ module "test" {
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
     name          = "ai-lz-vnet-default-1"
-    address_space = ["192.168.0.0/24"]                                                               # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
+    address_space = ["172.20.115.0/24"]                                                              # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
     dns_servers   = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value] # Use the DNS resolver IPs from the example hub
     # Explicit subnet prefixes for the /24. The module's default cidrsubnet math is calibrated for a /23
     # and would size the Microsoft.App/environments-delegated subnets below Azure's required /27 on a /24.
     # AIFoundrySubnet and ContainerAppEnvironmentSubnet are therefore pinned to /27 (delegation minimum).
-    # 192.168.0.144/28 - 192.168.0.255 left free for growth. Replace prefixes if the infra-allocated /24 differs.
+    # NOTE: Microsoft recommends /24 for the agent subnet alone; /27 meets the hard minimum but limits
+    # agent/Container Apps scaling headroom. Move to a /23 VNet if agent scaling is needed later.
+    # 172.20.115.144/28 - 172.20.115.255 left free for growth.
     subnets = {
-      PrivateEndpointSubnet         = { address_prefix = "192.168.0.0/27" }
-      AIFoundrySubnet               = { address_prefix = "192.168.0.32/27" }
-      ContainerAppEnvironmentSubnet = { address_prefix = "192.168.0.64/27" }
-      DevOpsBuildSubnet             = { address_prefix = "192.168.0.96/28" }
-      AppGatewaySubnet              = { address_prefix = "192.168.0.112/28" }
-      APIMSubnet                    = { address_prefix = "192.168.0.128/28" }
+      PrivateEndpointSubnet         = { address_prefix = "172.20.115.0/27" }
+      AIFoundrySubnet               = { address_prefix = "172.20.115.32/27" }
+      ContainerAppEnvironmentSubnet = { address_prefix = "172.20.115.64/27" }
+      DevOpsBuildSubnet             = { address_prefix = "172.20.115.96/28" }
+      AppGatewaySubnet              = { address_prefix = "172.20.115.112/28" }
+      APIMSubnet                    = { address_prefix = "172.20.115.128/28" }
     }
     vnet_peering_configuration = {
       peer_vnet_resource_id = module.example_hub.virtual_network_resource_id

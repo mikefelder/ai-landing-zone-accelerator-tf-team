@@ -15,4 +15,4 @@ Keeping subscription creation out of this configuration avoids the billing-scope
 
 ## Networking — /24 address space
 
-The spoke VNet defaults to a single `/24` (`192.168.0.0/24`) with explicit subnet prefixes. The two `Microsoft.App/environments`-delegated subnets (`AIFoundrySubnet`, `ContainerAppEnvironmentSubnet`) are pinned to `/27`, Azure's minimum for delegated subnets. Replace the prefixes (and `address_space`) with your infra-allocated `/24` before deploying.
+The spoke VNet uses the infra-allocated `/24` (`172.20.115.0/24`) with explicit subnet prefixes. The two `Microsoft.App/environments`-delegated subnets (`AIFoundrySubnet`, `ContainerAppEnvironmentSubnet`) are pinned to `/27`, Azure's minimum for delegated subnets. All three RFC1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) are supported for the Foundry agent capabilityHost subnet; `172.20.115.0/24` falls within `172.16.0.0/12`. Microsoft recommends a `/24` for the agent subnet alone, so move to a `/23` VNet if Agent Service / Container Apps scaling needs more headroom than the `/27` provides.
