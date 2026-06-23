@@ -1,18 +1,5 @@
 locals {
   ai_foundry_name = try(var.ai_foundry_definition.ai_foundry.name, null) != null ? var.ai_foundry_definition.ai_foundry.name : (var.name_prefix != null ? "${var.name_prefix}-ai-foundry-${random_string.name_suffix.result}" : "ai-foundry-${random_string.name_suffix.result}")
-  # Split model deployments by provider. First-party models (e.g. OpenAI) are
-  # created by the foundry pattern module. Marketplace partner models such as
-  # Anthropic Claude require a modelProviderData attestation block that the
-  # pattern module does not emit, so they are created via a dedicated azapi
-  # resource (see main.foundry.tf -> azapi_resource.ai_anthropic_model_deployment).
-  foundry_openai_model_deployments = {
-    for key, value in var.ai_foundry_definition.ai_model_deployments : key => value
-    if value.model_provider_data == null
-  }
-  foundry_anthropic_model_deployments = {
-    for key, value in var.ai_foundry_definition.ai_model_deployments : key => value
-    if value.model_provider_data != null
-  }
   foundry_ai_foundry = merge(
     var.ai_foundry_definition.ai_foundry, {
       name = local.ai_foundry_name

@@ -8,7 +8,7 @@ module "foundry_ptn" {
   resource_group_resource_id = azurerm_resource_group.this.id
   #pass through the resource definitions
   ai_foundry                          = local.foundry_ai_foundry
-  ai_model_deployments                = local.foundry_openai_model_deployments
+  ai_model_deployments                = var.ai_foundry_definition.ai_model_deployments
   ai_projects                         = local.foundry_ai_projects
   ai_search_definition                = local.foundry_ai_search_definition
   cosmosdb_definition                 = local.foundry_cosmosdb_definition
@@ -21,46 +21,6 @@ module "foundry_ptn" {
   storage_account_definition          = local.foundry_storage_account_definition
 
   depends_on = [azapi_resource_action.purge_ai_foundry]
-}
-
-# Anthropic Claude (and other Azure Marketplace partner) model deployments.
-# The foundry pattern module cannot create these because its deployment body
-# omits the required `modelProviderData` attestation and leaves azapi schema
-# validation enabled. We create them directly against the Foundry account the
-# module provisions. Sending `modelProviderData` auto-accepts the Anthropic
-# Marketplace offer terms, so review https://www.anthropic.com/legal/commercial-terms
-# before applying. Foundry serializes deployment creation per account, so this
-# resource is created after the module to avoid 409 conflicts.
-resource "azapi_resource" "ai_anthropic_model_deployment" {
-  for_each = local.foundry_anthropic_model_deployments
-
-  type                      = "Microsoft.CognitiveServices/accounts/deployments@2025-10-01-preview"
-  name                      = each.value.name
-  parent_id                 = module.foundry_ptn.ai_foundry_id
-  schema_validation_enabled = false # required to allow modelProviderData
-
-  body = {
-    sku = {
-      name     = each.value.scale.type
-      capacity = each.value.scale.capacity
-    }
-    properties = {
-      model = {
-        format  = each.value.model.format
-        name    = each.value.model.name
-        version = each.value.model.version
-      }
-      modelProviderData = {
-        organizationName = each.value.model_provider_data.organization_name
-        countryCode      = each.value.model_provider_data.country_code
-        industry         = each.value.model_provider_data.industry
-      }
-      raiPolicyName        = each.value.rai_policy_name
-      versionUpgradeOption = each.value.version_upgrade_option
-    }
-  }
-
-  depends_on = [module.foundry_ptn]
 }
 
 resource "azapi_resource_action" "purge_ai_foundry" {

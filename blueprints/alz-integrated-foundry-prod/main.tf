@@ -126,25 +126,10 @@ module "test" {
       create_ai_agent_service    = true
       enable_diagnostic_settings = false
     }
-    ai_model_deployments = {
-      "claude-sonnet-4-6" = {
-        name = "claude-sonnet-4-6"
-        model = {
-          format  = "Anthropic"
-          name    = "claude-sonnet-4-6"
-          version = "1"
-        }
-        model_provider_data = {
-          organization_name = var.anthropic_organization_name
-          country_code      = var.anthropic_country_code
-          industry          = var.anthropic_industry
-        }
-        scale = {
-          type     = "GlobalStandard"
-          capacity = 25
-        }
-      }
-    }
+    # No model deployments are provisioned by this blueprint. Add OpenAI (first-party)
+    # deployments here when ready; partner/Marketplace models (e.g. Anthropic) are
+    # intentionally omitted to avoid Marketplace licensing/attestation requirements.
+    ai_model_deployments = {}
     ai_projects = {
       project_1 = {
         name                       = "project-1"
