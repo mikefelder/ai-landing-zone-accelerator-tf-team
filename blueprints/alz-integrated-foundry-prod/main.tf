@@ -127,16 +127,21 @@ module "test" {
       enable_diagnostic_settings = false
     }
     ai_model_deployments = {
-      "gpt-4.1" = {
-        name = "gpt-4.1"
+      "claude-sonnet-4-6" = {
+        name = "claude-sonnet-4-6"
         model = {
-          format  = "OpenAI"
-          name    = "gpt-4.1"
-          version = "2025-04-14"
+          format  = "Anthropic"
+          name    = "claude-sonnet-4-6"
+          version = "1"
+        }
+        model_provider_data = {
+          organization_name = var.anthropic_organization_name
+          country_code      = var.anthropic_country_code
+          industry          = var.anthropic_industry
         }
         scale = {
           type     = "GlobalStandard"
-          capacity = 1
+          capacity = 25
         }
       }
     }
@@ -207,6 +212,7 @@ module "test" {
   }
   genai_key_vault_definition = {}
   genai_storage_account_definition = {
+    deploy = false
   }
   ks_ai_search_definition = {
     deploy                     = false

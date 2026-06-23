@@ -48,6 +48,16 @@ variable "ai_foundry_definition" {
         name    = string
         version = string
       })
+      # When set, the deployment targets an Anthropic Claude (or other Marketplace
+      # partner) model. The presence of this block routes the deployment through a
+      # dedicated azapi resource that sends the required modelProviderData
+      # attestation (which auto-accepts the Azure Marketplace offer) and disables
+      # azapi schema validation. Leave null for first-party (e.g. OpenAI) models.
+      model_provider_data = optional(object({
+        organization_name = string
+        country_code      = optional(string, "US")
+        industry          = optional(string, "technology")
+      }), null)
       scale = object({
         capacity = optional(number)
         family   = optional(string)
@@ -304,9 +314,13 @@ Configuration object for the Azure AI Foundry deployment (hub, projects, and Bri
   - `rai_policy_name` - (Optional) Responsible AI policy name applied to the deployment. Default is "Microsoft.DefaultV2".
   - `version_upgrade_option` - (Optional) Version upgrade option for the model. Default is "OnceNewDefaultVersionAvailable".
   - `model` - Model specification.
-    - `format` - Model format (e.g., OpenAI, OSS foundation model format).
+    - `format` - Model format (e.g., OpenAI, OSS foundation model format, or "Anthropic" for Claude models).
     - `name` - Model name.
     - `version` - Model version.
+  - `model_provider_data` - (Optional) Marketplace partner attestation. Set this for Anthropic Claude (or other Marketplace partner) models. When present, the deployment is created via a dedicated azapi resource that sends the attestation (auto-accepting the Azure Marketplace offer) and disables azapi schema validation. Leave null for first-party models such as OpenAI.
+    - `organization_name` - Legal entity name surfaced to the Marketplace offer.
+    - `country_code` - (Optional) Two-letter ISO country code. Default is "US".
+    - `industry` - (Optional) Lowercase industry value supported by Foundry. Default is "technology".
   - `scale` - Scale configuration for the deployment.
     - `capacity` - (Optional) Capacity value for the selected SKU family/size.
     - `family` - (Optional) SKU family.
