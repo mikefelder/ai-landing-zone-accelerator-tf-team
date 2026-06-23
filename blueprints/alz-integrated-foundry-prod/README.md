@@ -4,7 +4,239 @@
 
 **Best for:** Organizations that have already adopted Azure Landing Zones (ALZ) and want to deploy a **production-grade** Azure AI Foundry environment into an existing application landing zone subscription, leveraging the ALZ hub for DNS, firewall, and hybrid connectivity.
 
-This blueprint sets `flag_platform_landing_zone = true` and lets the module create the spoke VNet, then peers it back into the ALZ hub via `vnet_peering_configuration` and reuses the hub's private DNS zones. The full Foundry surface is enabled: APIM, App Gateway, Bastion, AI Agent Service, AI projects with connections to Cosmos DB, AI Search, and Storage.
+This blueprint sets `flag_platform_landing_zone = true` and lets the module create the spoke VNet, then peers it back into the ALZ hub via `vnet_peering_configuration` and reuses the hub's private DNS zones. The Foundry core is deployed with the AI Agent Service enabled and AI projects connected to AI Search and Storage. APIM, Application Gateway, Bastion, the Container App environment, the GenAI app-resource tier (App Configuration, Container Registry, Cosmos DB), and the knowledge-source services (AI Search, Bing grounding) are disabled by default — turn them on per environment as needed.
+
+## Target subscription
+
+This blueprint **targets a subscription that already exists** — it does not vend one. Have your platform team create the landing zone subscription first (Azure portal, your ALZ subscription-vending pipeline, or the [`Azure/avm-ptn-alz-sub-vending/azure`](https://registry.terraform.io/modules/Azure/avm-ptn-alz-sub-vending/azure/latest) module run from a platform repo). Then point this deployment at it in one of two ways:
+
+- Set `subscription_id` (and optionally `tenant_id`) in your `*.tfvars`, or
+- Export `ARM_SUBSCRIPTION_ID` (and `ARM_TENANT_ID`) so CI/CD injects the target without editing the blueprint.
+
+Keeping subscription creation out of this configuration avoids the billing-scope permissions and two-phase `apply` that in-line vending requires, and gives the workload a clean single-`apply` deploy and destroy lifecycle.
+
+## Networking — /24 address space
+
+The spoke VNet uses the infra-allocated `/24` (`172.20.115.0/24`) with explicit subnet prefixes. The two `Microsoft.App/environments`-delegated subnets (`AIFoundrySubnet`, `ContainerAppEnvironmentSubnet`) are pinned to `/27`, Azure's minimum for delegated subnets. All three RFC1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) are supported for the Foundry agent capabilityHost subnet; `172.20.115.0/24` falls within `172.16.0.0/12`. Microsoft recommends a `/24` for the agent subnet alone, so move to a `/23` VNet if Agent Service / Container Apps scaling needs more headroom than the `/27` provides.
+
+```hcl
+terraform {
+  required_version = ">= 1.9, < 2.0"
+
+  required_providers {
+    azapi = {
+      source  = "azure/azapi"
+      version = "~> 2.0"
+    }
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.21"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
+  }
+}
+
+provider "azurerm" {
+  # Target the pre-vended landing zone subscription. Leave var.subscription_id
+  # null to fall back to ARM_SUBSCRIPTION_ID / the Azure CLI's active subscription.
+  subscription_id     = var.subscription_id
+  tenant_id           = var.tenant_id
+  storage_use_azuread = true
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+    virtual_machine {
+      delete_os_disk_on_deletion = true
+    }
+    cognitive_account {
+      purge_soft_delete_on_destroy = true
+    }
+  }
+}
+
+data "azurerm_client_config" "current" {}
+
+## Section to provide a random Azure region for the resource group
+# This allows us to randomize the region for the resource group.
+module "regions" {
+  source  = "Azure/avm-utl-regions/azurerm"
+  version = "0.9.2"
+}
+
+# This allows us to randomize the region for the resource group.
+resource "random_integer" "region_index" {
+  max = length(module.regions.regions) - 1
+  min = 0
+}
+## End of section to provide a random Azure region for the resource group
+
+# This ensures we have unique CAF compliant names for our resources.
+module "naming" {
+  source  = "Azure/naming/azurerm"
+  version = "0.4.2"
+}
+
+data "http" "ip" {
+  url = "https://api.ipify.org/"
+  retry {
+    attempts     = 5
+    max_delay_ms = 1000
+    min_delay_ms = 500
+  }
+}
+
+#create a sample hub to mimic an existing network landing zone configuration
+module "example_hub" {
+  source = "../../modules/example_hub_vnet"
+
+  location            = "australiaeast"
+  resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
+  #resource_group_name = "default-example-rg-ivrh-1"
+  vnet_definition = {
+    address_space = "10.10.0.0/24"
+  }
+  deployer_ip_address = "${data.http.ip.response_body}/32"
+  enable_telemetry    = var.enable_telemetry
+  name_prefix         = "${module.naming.resource_group.name_unique}-hub"
+}
+
+module "test" {
+  source = "../../"
+
+  location            = "australiaeast"
+  resource_group_name = "ai-lz-rg-default-${substr(module.naming.unique-seed, 0, 5)}"
+  #resource_group_name = "ai-lz-rg-default-ivrhi-1"
+  vnet_definition = {
+    name          = "ai-lz-vnet-default-1"
+    address_space = ["172.20.115.0/24"]                                                              # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
+    dns_servers   = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value] # Use the DNS resolver IPs from the example hub
+    # Explicit subnet prefixes for the /24. The module's default cidrsubnet math is calibrated for a /23
+    # and would size the Microsoft.App/environments-delegated subnets below Azure's required /27 on a /24.
+    # AIFoundrySubnet and ContainerAppEnvironmentSubnet are therefore pinned to /27 (delegation minimum).
+    # NOTE: Microsoft recommends /24 for the agent subnet alone; /27 meets the hard minimum but limits
+    # agent/Container Apps scaling headroom. Move to a /23 VNet if agent scaling is needed later.
+    # 172.20.115.144/28 - 172.20.115.255 left free for growth.
+    subnets = {
+      PrivateEndpointSubnet         = { address_prefix = "172.20.115.0/27" }
+      AIFoundrySubnet               = { address_prefix = "172.20.115.32/27" }
+      ContainerAppEnvironmentSubnet = { address_prefix = "172.20.115.64/27" }
+      DevOpsBuildSubnet             = { address_prefix = "172.20.115.96/28" }
+      AppGatewaySubnet              = { address_prefix = "172.20.115.112/28" }
+      APIMSubnet                    = { address_prefix = "172.20.115.128/28" }
+    }
+    vnet_peering_configuration = {
+      peer_vnet_resource_id = module.example_hub.virtual_network_resource_id
+    }
+  }
+  ai_foundry_definition = {
+    purge_on_destroy = false
+    ai_foundry = {
+      create_ai_agent_service    = true
+      enable_diagnostic_settings = false
+    }
+    ai_model_deployments = {
+      "gpt-4.1" = {
+        name = "gpt-4.1"
+        model = {
+          format  = "OpenAI"
+          name    = "gpt-4.1"
+          version = "2025-04-14"
+        }
+        scale = {
+          type     = "GlobalStandard"
+          capacity = 1
+        }
+      }
+    }
+    ai_projects = {
+      project_1 = {
+        name                       = "project-1"
+        description                = "Project 1 description"
+        display_name               = "Project 1 Display Name"
+        create_project_connections = true
+        ai_search_connection = {
+          new_resource_map_key = "this"
+        }
+        storage_account_connection = {
+          new_resource_map_key = "this"
+        }
+      }
+    }
+    ai_search_definition = {
+      this = {
+      }
+    }
+    cosmosdb_definition = {}
+    key_vault_definition = {
+      this = {
+      }
+    }
+
+    storage_account_definition = {
+      this = {
+        shared_access_key_enabled = true #configured for testing
+        endpoints = {
+          blob = {
+            type = "blob"
+          }
+        }
+      }
+    }
+  }
+  apim_definition = {
+    deploy             = false
+    deploy_sample_apis = true
+    publisher_email    = "DoNotReply@exampleEmail.com"
+    publisher_name     = "Azure API Management"
+  }
+  app_gateway_definition = {
+    deploy = false
+  }
+  bastion_definition = {
+    deploy = false
+  }
+  container_app_environment_definition = {
+    deploy                     = false
+    enable_diagnostic_settings = false
+  }
+  enable_telemetry           = var.enable_telemetry
+  flag_platform_landing_zone = true
+  genai_app_configuration_definition = {
+    deploy                     = false
+    enable_diagnostic_settings = false
+  }
+  genai_container_registry_definition = {
+    deploy                     = false
+    enable_diagnostic_settings = false
+  }
+  genai_cosmosdb_definition = {
+    deploy            = false
+    consistency_level = "Session"
+  }
+  genai_key_vault_definition = {}
+  genai_storage_account_definition = {
+  }
+  ks_ai_search_definition = {
+    deploy                     = false
+    enable_diagnostic_settings = false
+  }
+  ks_bing_grounding_definition = {
+    deploy = false
+  }
+  private_dns_zones = {
+    azure_policy_pe_zone_linking_enabled      = true
+    existing_zones_resource_group_resource_id = module.example_hub.resource_group_resource_id
+  }
+}
+```
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -48,6 +280,35 @@ If it is set to false, then no telemetry will be collected.
 Type: `bool`
 
 Default: `true`
+
+### <a name="input_subscription_id"></a> [subscription\_id](#input\_subscription\_id)
+
+Description: The ID of the target Azure subscription to deploy this landing zone into.
+
+This blueprint expects the landing zone subscription to already exist — vend it  
+separately via your platform team's ALZ process (portal, ALZ pipeline, or the
+`Azure/avm-ptn-alz-sub-vending/azure` module run from a platform repo), then point  
+this deployment at it by setting this value.
+
+When left `null`, the provider falls back to the `ARM_SUBSCRIPTION_ID` environment  
+variable (or the Azure CLI's active subscription), so CI/CD can inject the target  
+subscription without editing this file.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id)
+
+Description: The ID of the Azure Entra ID tenant the target subscription belongs to.
+
+When left `null`, the provider falls back to the `ARM_TENANT_ID` environment  
+variable (or the Azure CLI's active tenant). Only set this when deploying across  
+tenants or when the deploy identity has access to multiple tenants.
+
+Type: `string`
+
+Default: `null`
 
 ## Outputs
 

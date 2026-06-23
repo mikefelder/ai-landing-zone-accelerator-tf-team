@@ -22,6 +22,10 @@ terraform {
 }
 
 provider "azurerm" {
+  # Target the pre-vended landing zone subscription. Leave var.subscription_id
+  # null to fall back to ARM_SUBSCRIPTION_ID / the Azure CLI's active subscription.
+  subscription_id     = var.subscription_id
+  tenant_id           = var.tenant_id
   storage_use_azuread = true
   features {
     resource_group {
@@ -71,7 +75,7 @@ data "http" "ip" {
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
-  location            = "australiaeast"
+  location            = "swedencentral"
   resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
   #resource_group_name = "default-example-rg-ivrh-1"
   vnet_definition = {
@@ -85,19 +89,33 @@ module "example_hub" {
 module "test" {
   source = "../../"
 
-  location            = "australiaeast"
+  location            = "swedencentral"
   resource_group_name = "ai-lz-rg-default-${substr(module.naming.unique-seed, 0, 5)}"
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
     name          = "ai-lz-vnet-default-1"
-    address_space = ["192.168.0.0/23"]                                                               # has to be out of 192.168.0.0/16 currently. Other RFC1918 not supported for foundry capabilityHost injection.
+    address_space = ["172.20.115.0/24"]                                                              # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
     dns_servers   = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value] # Use the DNS resolver IPs from the example hub
+    # Explicit subnet prefixes for the /24. The module's default cidrsubnet math is calibrated for a /23
+    # and would size the Microsoft.App/environments-delegated subnets below Azure's required /27 on a /24.
+    # AIFoundrySubnet and ContainerAppEnvironmentSubnet are therefore pinned to /27 (delegation minimum).
+    # NOTE: Microsoft recommends /24 for the agent subnet alone; /27 meets the hard minimum but limits
+    # agent/Container Apps scaling headroom. Move to a /23 VNet if agent scaling is needed later.
+    # 172.20.115.144/28 - 172.20.115.255 left free for growth.
+    subnets = {
+      PrivateEndpointSubnet         = { address_prefix = "172.20.115.0/27" }
+      AIFoundrySubnet               = { address_prefix = "172.20.115.32/27" }
+      ContainerAppEnvironmentSubnet = { address_prefix = "172.20.115.64/27" }
+      DevOpsBuildSubnet             = { address_prefix = "172.20.115.96/28" }
+      AppGatewaySubnet              = { address_prefix = "172.20.115.112/28" }
+      APIMSubnet                    = { address_prefix = "172.20.115.128/28" }
+    }
     vnet_peering_configuration = {
       peer_vnet_resource_id = module.example_hub.virtual_network_resource_id
     }
   }
   ai_foundry_definition = {
-    purge_on_destroy = true
+    purge_on_destroy = false
     ai_foundry = {
       create_ai_agent_service    = true
       enable_diagnostic_settings = false
@@ -122,9 +140,6 @@ module "test" {
         description                = "Project 1 description"
         display_name               = "Project 1 Display Name"
         create_project_connections = true
-        cosmos_db_connection = {
-          new_resource_map_key = "this"
-        }
         ai_search_connection = {
           new_resource_map_key = "this"
         }
@@ -137,11 +152,7 @@ module "test" {
       this = {
       }
     }
-    cosmosdb_definition = {
-      this = {
-        consistency_level = "Session"
-      }
-    }
+    cosmosdb_definition = {}
     key_vault_definition = {
       this = {
       }
@@ -159,78 +170,44 @@ module "test" {
     }
   }
   apim_definition = {
+    deploy             = false
     deploy_sample_apis = true
     publisher_email    = "DoNotReply@exampleEmail.com"
     publisher_name     = "Azure API Management"
   }
   app_gateway_definition = {
-    backend_address_pools = {
-      example_pool = {
-        name = "example-backend-pool"
-      }
-    }
-
-    backend_http_settings = {
-      example_http_settings = {
-        name     = "example-http-settings"
-        port     = 80
-        protocol = "Http"
-      }
-    }
-
-    frontend_ports = {
-      example_frontend_port = {
-        name = "example-frontend-port"
-        port = 80
-      }
-    }
-
-    http_listeners = {
-      example_listener = {
-        name               = "example-listener"
-        frontend_port_name = "example-frontend-port"
-      }
-    }
-
-    request_routing_rules = {
-      example_rule = {
-        name                       = "example-rule"
-        rule_type                  = "Basic"
-        http_listener_name         = "example-listener"
-        backend_address_pool_name  = "example-backend-pool"
-        backend_http_settings_name = "example-http-settings"
-        priority                   = 100
-      }
-    }
+    deploy = false
   }
   bastion_definition = {
-
+    deploy = false
   }
   container_app_environment_definition = {
+    deploy                     = false
     enable_diagnostic_settings = false
   }
   enable_telemetry           = var.enable_telemetry
   flag_platform_landing_zone = true
   genai_app_configuration_definition = {
+    deploy                     = false
     enable_diagnostic_settings = false
   }
   genai_container_registry_definition = {
+    deploy                     = false
     enable_diagnostic_settings = false
   }
   genai_cosmosdb_definition = {
+    deploy            = false
     consistency_level = "Session"
   }
-  genai_key_vault_definition = {
-    public_network_access_enabled = true # configured for testing
-    network_acls = {
-      bypass   = "AzureServices"
-      ip_rules = ["${data.http.ip.response_body}/32"] # Allow access from the test runner's IP address
-    }
-  }
+  genai_key_vault_definition = {}
   genai_storage_account_definition = {
   }
   ks_ai_search_definition = {
+    deploy                     = false
     enable_diagnostic_settings = false
+  }
+  ks_bing_grounding_definition = {
+    deploy = false
   }
   private_dns_zones = {
     azure_policy_pe_zone_linking_enabled      = true
