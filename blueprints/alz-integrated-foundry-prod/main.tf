@@ -75,7 +75,7 @@ data "http" "ip" {
 module "example_hub" {
   source = "../../modules/example_hub_vnet"
 
-  location            = "australiaeast"
+  location            = "swedencentral"
   resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
   #resource_group_name = "default-example-rg-ivrh-1"
   vnet_definition = {
@@ -89,7 +89,7 @@ module "example_hub" {
 module "test" {
   source = "../../"
 
-  location            = "australiaeast"
+  location            = "swedencentral"
   resource_group_name = "ai-lz-rg-default-${substr(module.naming.unique-seed, 0, 5)}"
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
