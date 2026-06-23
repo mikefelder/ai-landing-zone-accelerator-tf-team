@@ -44,17 +44,18 @@ data "azurerm_client_config" "current" {}
 
 ## Section to provide a random Azure region for the resource group
 # This allows us to randomize the region for the resource group.
-module "regions" {
-  source  = "Azure/avm-utl-regions/azurerm"
-  version = "0.9.2"
-}
-
-# This allows us to randomize the region for the resource group.
-resource "random_integer" "region_index" {
-  max = length(module.regions.regions) - 1
-  min = 0
-}
-## End of section to provide a random Azure region for the resource group
+# DISABLED: random region selection (using fixed swedencentral now)
+# module "regions" {
+#   source  = "Azure/avm-utl-regions/azurerm"
+#   version = "0.9.2"
+# }
+#
+# # This allows us to randomize the region for the resource group.
+# resource "random_integer" "region_index" {
+#   max = length(module.regions.regions) - 1
+#   min = 0
+# }
+# ## End of section to provide a random Azure region for the resource group
 
 # This ensures we have unique CAF compliant names for our resources.
 module "naming" {
@@ -62,29 +63,32 @@ module "naming" {
   version = "0.4.2"
 }
 
-data "http" "ip" {
-  url = "https://api.ipify.org/"
-  retry {
-    attempts     = 5
-    max_delay_ms = 1000
-    min_delay_ms = 500
-  }
-}
+# DISABLED: ipify data source (only used by disabled example_hub)
+# data "http" "ip" {
+#   url = "https://api.ipify.org/"
+#   retry {
+#     attempts     = 5
+#     max_delay_ms = 1000
+#     min_delay_ms = 500
+#   }
+# }
 
 #create a sample hub to mimic an existing network landing zone configuration
-module "example_hub" {
-  source = "../../modules/example_hub_vnet"
-
-  location            = "swedencentral"
-  resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
-  #resource_group_name = "default-example-rg-ivrh-1"
-  vnet_definition = {
-    address_space = "10.10.0.0/24"
-  }
-  deployer_ip_address = "${data.http.ip.response_body}/32"
-  enable_telemetry    = var.enable_telemetry
-  name_prefix         = "${module.naming.resource_group.name_unique}-hub"
-}
+# DISABLED: example_hub is commented out in favor of real ALZ hub integration.
+# TODO: wire to real ALZ hub VNet post-deployment. See README "Target subscription" section.
+# module "example_hub" {
+#   source = "../../modules/example_hub_vnet"
+#
+#   location            = "swedencentral"
+#   resource_group_name = "default-example-${module.naming.resource_group.name_unique}"
+#   #resource_group_name = "default-example-rg-ivrh-1"
+#   vnet_definition = {
+#     address_space = "10.10.0.0/24"
+#   }
+#   deployer_ip_address = "${data.http.ip.response_body}/32"
+#   enable_telemetry    = var.enable_telemetry
+#   name_prefix         = "${module.naming.resource_group.name_unique}-hub"
+# }
 
 module "test" {
   source = "../../"
@@ -94,8 +98,9 @@ module "test" {
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
     name          = "ai-lz-vnet-default-1"
-    address_space = ["172.20.115.0/24"]                                                              # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
-    dns_servers   = [for key, value in module.example_hub.dns_resolver_inbound_ip_addresses : value] # Use the DNS resolver IPs from the example hub
+    address_space = ["172.20.115.0/24"] # infra-allocated /24. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
+    # TODO: set dns_servers to ALZ hub DNS resolver IPs or custom DNS; currently commented out.
+    # dns_servers   = ["<hub-dns-resolver-ip-1>", "<hub-dns-resolver-ip-2>"]
     # Explicit subnet prefixes for the /24. The module's default cidrsubnet math is calibrated for a /23
     # and would size the Microsoft.App/environments-delegated subnets below Azure's required /27 on a /24.
     # AIFoundrySubnet and ContainerAppEnvironmentSubnet are therefore pinned to /27 (delegation minimum).
@@ -110,9 +115,10 @@ module "test" {
       AppGatewaySubnet              = { address_prefix = "172.20.115.112/28" }
       APIMSubnet                    = { address_prefix = "172.20.115.128/28" }
     }
-    vnet_peering_configuration = {
-      peer_vnet_resource_id = module.example_hub.virtual_network_resource_id
-    }
+    # TODO: vnet_peering_configuration — replace with real ALZ hub VNet resource ID
+    # vnet_peering_configuration = {
+    #   peer_vnet_resource_id = "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/<hub-vnet-name>"
+    # }
   }
   ai_foundry_definition = {
     purge_on_destroy = false
@@ -210,7 +216,8 @@ module "test" {
     deploy = false
   }
   private_dns_zones = {
-    azure_policy_pe_zone_linking_enabled      = true
-    existing_zones_resource_group_resource_id = module.example_hub.resource_group_resource_id
+    azure_policy_pe_zone_linking_enabled = true
+    # TODO: existing_zones_resource_group_resource_id — set to ALZ hub's private DNS zone RG resource ID
+    # existing_zones_resource_group_resource_id = "/subscriptions/.../resourceGroups/<hub-dns-rg>"
   }
 }
