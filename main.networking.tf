@@ -34,7 +34,7 @@ data "azurerm_virtual_network" "ai_lz_vnet" {
 module "byo_subnets" {
   source   = "Azure/avm-res-network-virtualnetwork/azurerm//modules/subnet"
   version  = "0.16.0"
-  for_each = local.is_byo_vnet ? local.deployed_subnets : { for k, v in local.deployed_subnets : k => v if false }
+  for_each = local.is_byo_vnet ? local.deployed_subnets : try({ for k, v in local.deployed_subnets : k => v if false }, {})
 
   # Direct VNet resource id (module not instantiated when BYO is null due to empty for_each)
   parent_id              = local.byo_vnet_resource_id
@@ -228,7 +228,7 @@ module "azure_bastion" {
 module "private_dns_zones" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
   version  = "0.5.0"
-  for_each = !var.flag_platform_landing_zone ? local.private_dns_zones : {}
+  for_each = !var.flag_platform_landing_zone ? local.private_dns_zones : { for k, v in local.private_dns_zones : k => v if false }
 
   domain_name           = each.value.name
   parent_id             = azurerm_resource_group.this.id

@@ -124,7 +124,10 @@ locals {
     }
   } : {}
   route_table_name = "${local.vnet_name}-firewall-route-table"
-  subnet_ids       = local.is_byo_vnet ? { for key, m in module.byo_subnets : key => try(m.resource_id, m.id) } : { for key, s in module.ai_lz_vnet[0].subnets : key => s.resource_id }
+  subnet_ids = try(
+    local.is_byo_vnet ? { for key, m in module.byo_subnets : key => try(m.resource_id, m.id) } : {},
+    { for key, s in module.ai_lz_vnet[0].subnets : key => s.resource_id }
+  )
   subnets = {
     AzureBastionSubnet = {
       enabled = var.flag_platform_landing_zone == false ? try(local.subnets_definition["AzureBastionSubnet"].enabled, true) : try(local.subnets_definition["AzureBastionSubnet"].enabled, false)
