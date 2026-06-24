@@ -153,6 +153,11 @@ module "test" {
     }
     cosmosdb_definition = {
       this = {
+        # Azure no longer supports enabling analytical storage at account-create time
+        # ("Enabling Analytical storage account creation is no longer supported").
+        # The agent-service Cosmos store does not need it, so disable it explicitly
+        # (the module schema still defaults this to true).
+        analytical_storage_enabled = false
       }
     }
     key_vault_definition = {
