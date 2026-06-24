@@ -218,3 +218,39 @@ module "test" {
     # existing_zones_resource_group_resource_id = "/subscriptions/.../resourceGroups/<hub-dns-rg>"
   }
 }
+
+# ---------------------------------------------------------------------------
+# Foundry RBAC for Entra security groups (per-project scope)
+# ---------------------------------------------------------------------------
+# Built-in Foundry role definition GUIDs. GUIDs are used instead of display
+# names because the Foundry RBAC roles were recently renamed (e.g. "Azure AI
+# Owner" -> "Foundry Owner") and the role IDs are stable across the rename.
+locals {
+  foundry_owner_role_definition_id = "c883944f-8b7b-4483-af10-35834be79c4a" # Foundry Owner (full manage + build/develop)
+  foundry_user_role_definition_id  = "53ca6127-db72-4b80-b1b0-d745d6d5456d" # Foundry User  (least-privilege build/develop)
+
+  # Map of project key => project ARM resource ID, exposed by the landing-zone module.
+  foundry_project_ids = module.test.ai_foundry_project_ids
+}
+
+# Admin group -> Foundry Owner on each project. Skipped entirely when the
+# variable is null.
+resource "azurerm_role_assignment" "foundry_project_admin" {
+  for_each = var.foundry_admin_entra_group_object_id == null ? {} : local.foundry_project_ids
+
+  scope              = each.value
+  role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.foundry_owner_role_definition_id}"
+  principal_id       = var.foundry_admin_entra_group_object_id
+  principal_type     = "Group"
+}
+
+# Developer group -> Foundry User on each project. Skipped entirely when the
+# variable is null.
+resource "azurerm_role_assignment" "foundry_project_developer" {
+  for_each = var.foundry_ai_developer_entra_group_object_id == null ? {} : local.foundry_project_ids
+
+  scope              = each.value
+  role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.foundry_user_role_definition_id}"
+  principal_id       = var.foundry_ai_developer_entra_group_object_id
+  principal_type     = "Group"
+}
