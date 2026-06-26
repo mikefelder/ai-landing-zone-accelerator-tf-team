@@ -241,6 +241,12 @@ locals {
 
   # Map of project key => project ARM resource ID, exposed by the landing-zone module.
   foundry_project_ids = module.test.ai_foundry_project_ids
+
+  # Resource group resource ID, derived from the Foundry account ID (which embeds
+  # /subscriptions/<sub>/resourceGroups/<rg>/providers/...). The Foundry portal
+  # "create a project" flow checks accounts/write at the subscription/resource
+  # group scope, so the admin control-plane role must be granted at RG scope.
+  foundry_resource_group_id = split("/providers/", module.test.ai_foundry_id)[0]
 }
 
 # Admin group -> Foundry Owner at the ACCOUNT scope. Grants data-plane admin
@@ -254,15 +260,16 @@ resource "azurerm_role_assignment" "foundry_account_admin" {
   principal_type     = "Group"
 }
 
-# Admin group -> Cognitive Services Contributor at the ACCOUNT scope. This is
-# the control-plane role that actually grants project lifecycle management
-# (Microsoft.CognitiveServices/accounts/write + accounts/projects/write) needed
-# to create / delete projects from the Foundry portal. Foundry Owner does NOT
-# carry these actions. Skipped when the variable is null.
+# Admin group -> Cognitive Services Contributor at the RESOURCE GROUP scope.
+# This is the control-plane role that grants project lifecycle management
+# (Microsoft.CognitiveServices/accounts/write + accounts/projects/write). The
+# Foundry portal "create a project" flow evaluates these at the subscription /
+# resource group scope (not the account), so an account-scoped grant is not
+# sufficient. Foundry Owner does NOT carry these actions. Skipped when null.
 resource "azurerm_role_assignment" "foundry_account_admin_contributor" {
   count = var.foundry_admin_entra_group_object_id == null ? 0 : 1
 
-  scope              = module.test.ai_foundry_id
+  scope              = local.foundry_resource_group_id
   role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.cognitive_services_contributor_role_definition_id}"
   principal_id       = var.foundry_admin_entra_group_object_id
   principal_type     = "Group"
