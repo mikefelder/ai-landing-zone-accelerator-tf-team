@@ -292,10 +292,15 @@ resource "azurerm_role_assignment" "foundry_project_admin" {
   principal_type     = "Group"
 }
 
-# Developer group -> Foundry User on each project. Skipped entirely when the
-# variable is null.
+# Developer group -> Foundry User on selected projects only. The developer group
+# does NOT receive access to every project by default; projects are opted in
+# individually via var.foundry_developer_project_keys (matching ai_projects map
+# keys). Skipped entirely when the developer group variable is null.
 resource "azurerm_role_assignment" "foundry_project_developer" {
-  for_each = var.foundry_ai_developer_entra_group_object_id == null ? {} : local.foundry_project_ids
+  for_each = var.foundry_ai_developer_entra_group_object_id == null ? {} : {
+    for project_key, project_id in local.foundry_project_ids : project_key => project_id
+    if contains(var.foundry_developer_project_keys, project_key)
+  }
 
   scope              = each.value
   role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.foundry_user_role_definition_id}"
