@@ -238,6 +238,20 @@ locals {
   foundry_project_ids = module.test.ai_foundry_project_ids
 }
 
+# Admin group -> Foundry Owner at the ACCOUNT scope. This grants project
+# lifecycle management (create / delete projects) which is an account-level
+# operation (Microsoft.CognitiveServices/accounts/projects/write|delete) and is
+# NOT covered by the per-project assignments below. Skipped when the variable
+# is null.
+resource "azurerm_role_assignment" "foundry_account_admin" {
+  count = var.foundry_admin_entra_group_object_id == null ? 0 : 1
+
+  scope              = module.test.ai_foundry_id
+  role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.foundry_owner_role_definition_id}"
+  principal_id       = var.foundry_admin_entra_group_object_id
+  principal_type     = "Group"
+}
+
 # Admin group -> Foundry Owner on each project. Skipped entirely when the
 # variable is null.
 resource "azurerm_role_assignment" "foundry_project_admin" {
