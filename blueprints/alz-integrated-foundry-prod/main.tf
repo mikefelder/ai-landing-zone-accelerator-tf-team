@@ -97,8 +97,9 @@ module "test" {
   resource_group_name = "ai-lz-rg-default-${substr(module.naming.unique-seed, 0, 5)}"
   #resource_group_name = "ai-lz-rg-default-ivrhi-1"
   vnet_definition = {
-    name          = "ai-lz-vnet-default-1"
-    address_space = ["172.20.124.0/23"] # infra-allocated /23. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
+    name                             = "ai-lz-vnet-default-1"
+    address_space                    = ["172.20.124.0/23"] # infra-allocated /23. 172.16.0.0/12 is a supported RFC1918 range for Foundry agent capabilityHost injection (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 are all valid).
+    ddos_protection_plan_resource_id = "/subscriptions/a6e17278-0964-474b-bf4a-c238f6cffaaf/resourceGroups/TEAM-ddos/providers/Microsoft.Network/ddosProtectionPlans/TEAM-ddos-australiaeast"
     # TODO: set dns_servers to ALZ hub DNS resolver IPs or custom DNS; currently commented out.
     # dns_servers   = ["<hub-dns-resolver-ip-1>", "<hub-dns-resolver-ip-2>"]
     # Explicit subnet prefixes for the /23. The delegated Microsoft.App/environments subnets
