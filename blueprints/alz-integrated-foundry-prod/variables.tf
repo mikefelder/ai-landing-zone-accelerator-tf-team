@@ -47,13 +47,17 @@ variable "foundry_admin_entra_group_object_id" {
   default     = null
   description = <<DESCRIPTION
 Object (principal) ID of the Microsoft Entra security group that should receive
-**Foundry Owner** (admin) access on every AI Foundry project in this blueprint.
+**admin** access across the AI Foundry account and its projects in this blueprint.
 
-Foundry Owner grants full management of projects and resources plus the data-plane
-permissions needed to build and develop. The assignment is scoped to each project
-resource (not the account), and is created with `principal_type = "Group"`.
+The group receives three assignments (all with `principal_type = "Group"`):
+- **Foundry Owner** on each project — full data-plane management plus build/develop.
+- **Foundry Owner** at the account scope — account-level data-plane management.
+- **Cognitive Services Contributor** at the resource group scope — control-plane
+  project lifecycle (Microsoft.CognitiveServices/accounts/projects/write), which
+  lets admins create and delete projects from the Foundry portal. Foundry Owner
+  alone does not carry this permission.
 
-Leave `null` to skip the admin role assignment. Provide the group's object ID, e.g.
+Leave `null` to skip the admin role assignments. Provide the group's object ID, e.g.
 via `TF_VAR_foundry_admin_entra_group_object_id`.
 DESCRIPTION
 

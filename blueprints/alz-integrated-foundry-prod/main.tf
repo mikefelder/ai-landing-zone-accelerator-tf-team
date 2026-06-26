@@ -131,10 +131,10 @@ module "test" {
     # intentionally omitted to avoid Marketplace licensing/attestation requirements.
     ai_model_deployments = {}
     ai_projects = {
-      project_1 = {
-        name                       = "project-1"
-        description                = "Project 1 description"
-        display_name               = "Project 1 Display Name"
+      aif_prj_default = {
+        name                       = "aif-prj-default"
+        description                = "Default AI Foundry project"
+        display_name               = "AIF Default Project"
         create_project_connections = true
         ai_search_connection = {
           new_resource_map_key = "this"
@@ -225,8 +225,14 @@ module "test" {
 }
 
 # ---------------------------------------------------------------------------
-# Foundry RBAC for Entra security groups (per-project scope)
+# Foundry RBAC for Entra security groups
 # ---------------------------------------------------------------------------
+# The admin group receives both data-plane access (Foundry Owner, on each
+# project and at the account scope) and control-plane project lifecycle rights
+# (Cognitive Services Contributor at the resource group scope, which carries
+# accounts/projects/write so admins can create/delete projects). The developer
+# group receives least-privilege Foundry User on each project only.
+#
 # Built-in Foundry role definition GUIDs. GUIDs are used instead of display
 # names because the Foundry RBAC roles were recently renamed (e.g. "Azure AI
 # Owner" -> "Foundry Owner") and the role IDs are stable across the rename.
