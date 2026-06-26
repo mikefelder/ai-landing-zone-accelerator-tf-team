@@ -234,20 +234,36 @@ locals {
   foundry_owner_role_definition_id = "c883944f-8b7b-4483-af10-35834be79c4a" # Foundry Owner (full manage + build/develop)
   foundry_user_role_definition_id  = "53ca6127-db72-4b80-b1b0-d745d6d5456d" # Foundry User  (least-privilege build/develop)
 
+  # Cognitive Services Contributor (Microsoft.CognitiveServices/*). Control-plane
+  # role that carries accounts/write + accounts/projects/write, which Foundry
+  # Owner does NOT. Required for creating/deleting projects from the portal.
+  cognitive_services_contributor_role_definition_id = "25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68"
+
   # Map of project key => project ARM resource ID, exposed by the landing-zone module.
   foundry_project_ids = module.test.ai_foundry_project_ids
 }
 
-# Admin group -> Foundry Owner at the ACCOUNT scope. This grants project
-# lifecycle management (create / delete projects) which is an account-level
-# operation (Microsoft.CognitiveServices/accounts/projects/write|delete) and is
-# NOT covered by the per-project assignments below. Skipped when the variable
-# is null.
+# Admin group -> Foundry Owner at the ACCOUNT scope. Grants data-plane admin
+# over account-level Foundry resources. Skipped when the variable is null.
 resource "azurerm_role_assignment" "foundry_account_admin" {
   count = var.foundry_admin_entra_group_object_id == null ? 0 : 1
 
   scope              = module.test.ai_foundry_id
   role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.foundry_owner_role_definition_id}"
+  principal_id       = var.foundry_admin_entra_group_object_id
+  principal_type     = "Group"
+}
+
+# Admin group -> Cognitive Services Contributor at the ACCOUNT scope. This is
+# the control-plane role that actually grants project lifecycle management
+# (Microsoft.CognitiveServices/accounts/write + accounts/projects/write) needed
+# to create / delete projects from the Foundry portal. Foundry Owner does NOT
+# carry these actions. Skipped when the variable is null.
+resource "azurerm_role_assignment" "foundry_account_admin_contributor" {
+  count = var.foundry_admin_entra_group_object_id == null ? 0 : 1
+
+  scope              = module.test.ai_foundry_id
+  role_definition_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.cognitive_services_contributor_role_definition_id}"
   principal_id       = var.foundry_admin_entra_group_object_id
   principal_type     = "Group"
 }
