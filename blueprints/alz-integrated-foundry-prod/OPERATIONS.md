@@ -48,6 +48,20 @@ terraform plan -out tfplan
 terraform show -no-color tfplan | Out-File -Encoding utf8 plan.txt
 ```
 
+If the account-level capability host was created manually during incident remediation, import it before planning so Terraform owns it:
+
+```powershell
+$acct = "/subscriptions/d0caa005-e9fb-478a-8a7d-ea0cc2654f52/resourceGroups/ai-lz-rg-default-n1r2z/providers/Microsoft.CognitiveServices/accounts/ai-foundry-s50j"
+terraform import 'module.test.module.foundry_ptn.azapi_resource.ai_agent_capability_host[0]' "$acct/capabilityHosts/ai-agent-service"
+```
+
+If manual admin role assignments were created before Terraform managed them, either remove the duplicate assignments or import them before planning:
+
+```powershell
+terraform import 'azurerm_role_assignment.foundry_account_admin[0]' '<account-foundry-owner-assignment-id>'
+terraform import 'azurerm_role_assignment.foundry_account_admin_contributor[0]' '<rg-cognitive-services-contributor-assignment-id>'
+```
+
 Review `plan.txt` manually before apply. Do not rely only on filtered terminal output.
 
 Expected project replacement actions may include creates for:
