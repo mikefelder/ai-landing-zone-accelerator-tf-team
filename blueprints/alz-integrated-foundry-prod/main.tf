@@ -29,13 +29,13 @@ provider "azurerm" {
   storage_use_azuread = true
   features {
     resource_group {
-      prevent_deletion_if_contains_resources = false
+      prevent_deletion_if_contains_resources = true
     }
     virtual_machine {
       delete_os_disk_on_deletion = true
     }
     cognitive_account {
-      purge_soft_delete_on_destroy = true
+      purge_soft_delete_on_destroy = false
     }
   }
 }
@@ -168,7 +168,7 @@ module "test" {
 
     storage_account_definition = {
       this = {
-        shared_access_key_enabled = true #configured for testing
+        shared_access_key_enabled = false
         endpoints = {
           blob = {
             type = "blob"
@@ -222,6 +222,13 @@ module "test" {
     azure_policy_pe_zone_linking_enabled = true
     # TODO: existing_zones_resource_group_resource_id — set to ALZ hub's private DNS zone RG resource ID
     # existing_zones_resource_group_resource_id = "/subscriptions/.../resourceGroups/<hub-dns-rg>"
+  }
+}
+
+check "foundry_developer_project_keys_known" {
+  assert {
+    condition     = length(setsubtract(var.foundry_developer_project_keys, toset(keys(module.test.ai_foundry_project_ids)))) == 0
+    error_message = "foundry_developer_project_keys must only contain keys present in ai_foundry_definition.ai_projects."
   }
 }
 
