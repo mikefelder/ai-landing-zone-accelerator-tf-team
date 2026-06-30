@@ -3,6 +3,10 @@ resource "azapi_resource" "ai_foundry" {
   name      = local.ai_foundry_name
   parent_id = var.resource_group_resource_id
   type      = "Microsoft.CognitiveServices/accounts@2025-10-01-preview"
+  timeouts {
+    create = "60m"
+    update = "60m"
+  }
   body = {
 
     kind = "AIServices",
@@ -52,6 +56,10 @@ resource "azapi_resource" "ai_agent_capability_host" {
   name      = var.ai_foundry.network_injections != null ? "ai-agent-service" : "ai-agent-service-${random_string.resource_token.result}"
   parent_id = azapi_resource.ai_foundry.id
   type      = "Microsoft.CognitiveServices/accounts/capabilityHosts@2025-10-01-preview"
+  timeouts {
+    create = "60m"
+    update = "60m"
+  }
   body = {
     properties = merge({
       capabilityHostKind = "Agents"
