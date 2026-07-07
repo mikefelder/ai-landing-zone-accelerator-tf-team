@@ -22,8 +22,9 @@ variable "ai_foundry_definition" {
         event_hub_name                           = optional(string, null)
         marketplace_partner_resource_id          = optional(string, null)
       })), {})
-      allow_project_management = optional(bool, true)
-      create_ai_agent_service  = optional(bool, false)
+      allow_project_management      = optional(bool, true)
+      create_ai_agent_service       = optional(bool, false)
+      public_network_access_enabled = optional(bool, null)
       #network_injections is statically set to vnet/subnet created in the module.
       private_dns_zone_resource_ids = optional(list(string), [])
       sku                           = optional(string, "S0")
@@ -287,6 +288,7 @@ Configuration object for the Azure AI Foundry deployment (hub, projects, and Bri
     - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
   - `allow_project_management` - (Optional) Whether project management is allowed from the hub. Default is true.
   - `create_ai_agent_service` - (Optional) Whether to create the AI Agent service in the hub. Default is false.
+  - `public_network_access_enabled` - (Optional) Whether public network access is enabled for the hub. If not set, public access is disabled when `create_private_endpoints` is true and enabled otherwise.
   - `private_dns_zone_resource_ids` - (Optional) List of private DNS zone resource IDs for hub endpoints. Default is [].
   - `sku` - (Optional) The SKU for the hub. Default is "S0".
   - `role_assignments` - (Optional) Map of role assignments on the hub. The map key is deliberately arbitrary to avoid plan-time unknown key issues.

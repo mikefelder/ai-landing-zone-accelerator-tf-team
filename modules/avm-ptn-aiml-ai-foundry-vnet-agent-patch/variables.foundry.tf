@@ -1,9 +1,10 @@
 variable "ai_foundry" {
   type = object({
-    name                     = optional(string, null)
-    disable_local_auth       = optional(bool, false)
-    allow_project_management = optional(bool, true)
-    create_ai_agent_service  = optional(bool, false)
+    name                          = optional(string, null)
+    disable_local_auth            = optional(bool, false)
+    allow_project_management      = optional(bool, true)
+    create_ai_agent_service       = optional(bool, false)
+    public_network_access_enabled = optional(bool, null)
     network_injections = optional(list(object({
       scenario                   = optional(string, "agent")
       subnetArmId                = string
@@ -36,6 +37,7 @@ Configuration object for the Azure AI Foundry service to be created for AI workl
 - `disable_local_auth` - (Optional) Whether to disable local authentication for the AI Foundry service. Default is false.
 - `allow_project_management` - (Optional) Whether to allow project management capabilities in the AI Foundry service. Default is true.
 - `create_ai_agent_service` - (Optional) Whether to create an AI agent service as part of the AI Foundry deployment. Default is false.
+- `public_network_access_enabled` - (Optional) Whether public network access is enabled for the AI Foundry service. If not set, public access is disabled when `create_private_endpoints` is true and enabled otherwise.
 - `network_injections` - (Optional) List of network injection configurations for the AI Foundry service.
   - `scenario` - (Optional) The scenario for the network injection. Default is "agent".
   - `subnetArmId` - The subnet ARM ID for the AI agent service.

@@ -89,6 +89,24 @@ terraform apply tfplan
 
 If apply fails because Azure RBAC propagation is not complete, wait several minutes and run a new plan/apply cycle.
 
+## Creating Additional Foundry Projects
+
+In the new Foundry portal, the top-left **Create new project** flow creates a project with a new or selected **Microsoft Foundry resource**. For projects that must live under the Terraform-managed Foundry account, use one of these paths instead:
+
+- Preferred: add another entry to `ai_foundry_definition.ai_projects` in `main.tf`, then run the normal saved plan/apply workflow. This keeps project RBAC, connections, and capability hosts under Terraform management.
+- Portal: select **Operate** in the upper-right navigation, select **Admin**, select the parent Foundry resource `ai-foundry-s50j`, then select **Add project**.
+- CLI: create a child project under the existing account:
+
+```powershell
+az cognitiveservices account project create `
+	--name ai-foundry-s50j `
+	--resource-group ai-lz-rg-default-n1r2z `
+	--project-name <project-name> `
+	--location swedencentral
+```
+
+Avoid creating a new **Microsoft Foundry resource** for project-only additions unless the intent is a separate parent account with separate networking, deployments, and shared connections.
+
 ## Admin RBAC Ownership
 
 Terraform owns these admin group assignments:

@@ -124,8 +124,9 @@ module "test" {
   ai_foundry_definition = {
     purge_on_destroy = false
     ai_foundry = {
-      create_ai_agent_service    = true
-      enable_diagnostic_settings = false
+      create_ai_agent_service       = true
+      enable_diagnostic_settings    = false
+      public_network_access_enabled = true
     }
     # No model deployments are provisioned by this blueprint. Add OpenAI (first-party)
     # deployments here when ready; partner/Marketplace models (e.g. Anthropic) are
